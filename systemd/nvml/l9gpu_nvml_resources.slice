@@ -7,4 +7,3 @@ MemoryMax=1G
 CPUQuota=100%
 IOWeight=100
 IODeviceWeight=/dev/sda2 100
-StartupDeviceWeight=/dev/sda2 100
