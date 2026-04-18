@@ -294,3 +294,6 @@ internal-archive/
 
 # Scratch / debug artifacts
 vllm-ui.html
+
+# OCB / goreleaser output
+/_build/
