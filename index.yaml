@@ -14,6 +14,48 @@ entries:
           url: https://github.com/last9/gpu-telemetry/blob/main/docs/METRICS.md
     apiVersion: v2
     appVersion: 0.0.0
+    created: "2026-04-18T12:28:26.003018867Z"
+    description: Vendor-agnostic GPU telemetry for AI/ML and HPC clusters.
+    digest: 678029640f8988e2dfceaa452bf3fbbdc85e8d537f9195fa3fb2d98427c6b853
+    home: https://github.com/last9/gpu-telemetry
+    icon: https://last9.io/favicon.ico
+    keywords:
+    - gpu
+    - nvidia
+    - amd
+    - gaudi
+    - opentelemetry
+    - otel
+    - telemetry
+    - ml
+    - observability
+    - slurm
+    - dcgm
+    - nvml
+    maintainers:
+    - email: support@last9.io
+      name: Last9 Engineering
+      url: https://last9.io
+    name: l9gpu
+    sources:
+    - https://github.com/last9/gpu-telemetry
+    type: application
+    urls:
+    - https://github.com/last9/gpu-telemetry/releases/download/chart-v0.1.1/l9gpu-0.1.1.tgz
+    version: 0.1.1
+  - annotations:
+      artifacthub.io/category: monitoring-logging
+      artifacthub.io/changes: |
+        - kind: added
+          description: Initial chart release
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Architecture
+          url: https://github.com/last9/gpu-telemetry/blob/main/docs/ARCHITECTURE.md
+        - name: Metrics reference
+          url: https://github.com/last9/gpu-telemetry/blob/main/docs/METRICS.md
+    apiVersion: v2
+    appVersion: 0.0.0
     created: "2026-04-18T17:48:56.529681+05:30"
     description: Vendor-agnostic GPU telemetry for AI/ML and HPC clusters.
     digest: 206b9ad1917562bbd711cfd713979ec6dd998b37d9bd53a471de4a4e88627fda
@@ -43,4 +85,4 @@ entries:
     urls:
     - https://last9.github.io/gpu-telemetry/l9gpu-0.1.0.tgz
     version: 0.1.0
-generated: "2026-04-18T17:48:56.52836+05:30"
+generated: "2026-04-18T12:28:26.003028375Z"
