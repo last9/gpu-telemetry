@@ -30,7 +30,7 @@ processors:
         - k8s.node.name
 
   # Requires GET/LIST/WATCH on pods in all namespaces.
-  k8sprocessor:
+  k8s:
     cache_duration: 60
 
 exporters:
@@ -44,11 +44,11 @@ service:
   pipelines:
     metrics:
       receivers: [otlp]
-      processors: [memory_limiter, k8sattributes, k8sprocessor, batch]
+      processors: [memory_limiter, k8sattributes, k8s, batch]
       exporters: [otlp]
     logs:
       receivers: [otlp]
-      processors: [memory_limiter, k8sattributes, k8sprocessor, batch]
+      processors: [memory_limiter, k8sattributes, k8s, batch]
       exporters: [otlp]
 
 extensions:

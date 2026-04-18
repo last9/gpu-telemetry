@@ -1,0 +1,8 @@
+[Unit]
+Description=Slice for l9gpu host-check services (slurm_monitor, sacct_*, scontrol, storage)
+
+[Slice]
+MemoryHigh=700M
+MemoryMax=1G
+CPUQuota=100%
+IOWeight=100

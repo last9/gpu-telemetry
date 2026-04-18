@@ -16,7 +16,7 @@ concurrency:
 
 env:
   GO_VERSION: "1.24"
-  OCB_VERSION: "v0.126.0"
+  OCB_VERSION: "v0.150.0"
 
 jobs:
   release:

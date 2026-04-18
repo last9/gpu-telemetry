@@ -71,7 +71,7 @@ receivers:
 
 processors:
   k8sattributes: {}
-  k8sprocessor: {}
+  k8s: {}
   batch: {}
 
 exporters:
@@ -84,11 +84,11 @@ service:
   pipelines:
     metrics:
       receivers: [otlp]
-      processors: [k8sattributes, k8sprocessor, batch]
+      processors: [k8sattributes, k8s, batch]
       exporters: [otlp]
     logs:
       receivers: [otlp]
-      processors: [k8sattributes, k8sprocessor, batch]
+      processors: [k8sattributes, k8s, batch]
       exporters: [otlp]
 ```
 
