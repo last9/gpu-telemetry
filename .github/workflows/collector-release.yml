@@ -63,15 +63,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Derive semver from tag
-        id: semver
-        env:
-          REF_NAME: ${{ github.ref_name }}
-        run: |
-          # Strip the "collector-" prefix so goreleaser gets a pure semver tag.
-          semver="${REF_NAME#collector-}"
-          echo "tag=${semver}" >> "$GITHUB_OUTPUT"
-
       - name: Run goreleaser
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -80,4 +71,3 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_CURRENT_TAG: ${{ steps.semver.outputs.tag }}

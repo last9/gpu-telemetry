@@ -8,6 +8,9 @@ version: 2
 
 project_name: l9gpu-collector
 
+monorepo:
+  tag_prefix: collector-
+
 before:
   hooks:
     - sh -c "cd _build && go mod tidy"
