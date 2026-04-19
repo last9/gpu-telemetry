@@ -60,32 +60,18 @@ dockers:
     extra_files:
       - deploy/collector/config.example.yaml
 
-  - id: linux-arm64
-    goos: linux
-    goarch: arm64
-    dockerfile: deploy/collector/Dockerfile
-    image_templates:
-      - "ghcr.io/last9/l9gpu-collector:{{ .Tag }}-arm64"
-    use: buildx
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.source=https://github.com/last9/gpu-telemetry"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.licenses=MIT"
-    extra_files:
-      - deploy/collector/config.example.yaml
+# linux/arm64 docker build via qemu on hosted runners consistently
+# times out. Ship the arm64 binary tarball via the archives stanza;
+# add an arm64 docker image once a native arm64 runner is available.
 
 docker_manifests:
   - name_template: "ghcr.io/last9/l9gpu-collector:{{ .Tag }}"
     image_templates:
       - "ghcr.io/last9/l9gpu-collector:{{ .Tag }}-amd64"
-      - "ghcr.io/last9/l9gpu-collector:{{ .Tag }}-arm64"
 
   - name_template: "ghcr.io/last9/l9gpu-collector:latest"
     image_templates:
       - "ghcr.io/last9/l9gpu-collector:{{ .Tag }}-amd64"
-      - "ghcr.io/last9/l9gpu-collector:{{ .Tag }}-arm64"
 
 checksum:
   name_template: "checksums.txt"
