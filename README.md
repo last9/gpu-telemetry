@@ -3,7 +3,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![Go](https://img.shields.io/badge/go-1.24%2B-00ADD8)
+![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8)
+[![PyPI](https://img.shields.io/pypi/v/l9gpu)](https://pypi.org/project/l9gpu/)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/l9gpu)](https://artifacthub.io/packages/search?repo=l9gpu)
 
 DCGM exporter tells you a GPU is hot. It won't tell you whose job is frying it.
 
