@@ -1,0 +1,16 @@
+# Artifact Hub repository metadata for last9/gpu-telemetry Helm charts.
+# https://artifacthub.io/docs/topics/repositories/#ownership-claim
+#
+# repositoryID is populated after the repository is added on artifacthub.io:
+#   1. Sign in at https://artifacthub.io (GitHub auth)
+#   2. Control Panel -> Add repository -> Helm charts
+#       Name: l9gpu
+#       Display name: Last9 GPU Telemetry
+#       URL: https://last9.github.io/gpu-telemetry
+#   3. Copy the generated repository ID and paste it below.
+
+repositoryID: ""
+
+owners:
+  - name: Last9 Engineering
+    email: support@last9.io
