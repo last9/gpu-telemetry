@@ -3,7 +3,7 @@ module github.com/last9/gpu-telemetry/slurmprocessor
 go 1.25.0
 
 require (
-	github.com/last9/gpu-telemetry/shelper v0.1.0
+	github.com/last9/gpu-telemetry/shelper v0.2.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.56.0
 	go.opentelemetry.io/collector/consumer v1.56.0

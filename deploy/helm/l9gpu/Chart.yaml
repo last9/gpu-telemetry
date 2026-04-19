@@ -4,8 +4,8 @@ apiVersion: v2
 name: l9gpu
 description: Vendor-agnostic GPU telemetry for AI/ML and HPC clusters.
 type: application
-version: 0.1.1
-appVersion: "0.0.0"
+version: 0.2.0
+appVersion: "0.2.0"
 icon: https://last9.io/favicon.ico
 home: https://github.com/last9/gpu-telemetry
 sources:

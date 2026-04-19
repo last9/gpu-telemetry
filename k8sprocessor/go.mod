@@ -3,7 +3,7 @@ module github.com/last9/gpu-telemetry/k8sprocessor
 go 1.25.0
 
 require (
-	github.com/last9/gpu-telemetry/k8shelper v0.1.0
+	github.com/last9/gpu-telemetry/k8shelper v0.2.0
 	go.opentelemetry.io/collector/component v1.56.0
 	go.opentelemetry.io/collector/consumer v1.56.0
 	go.opentelemetry.io/collector/pdata v1.56.0
