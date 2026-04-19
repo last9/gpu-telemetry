@@ -85,7 +85,7 @@ systemd unit files: [`systemd/`](./systemd/).
 ## Architecture
 
 <p align="center">
-  <img src="./docs/diagrams/l9gpu_architecture_flow.svg" alt="l9gpu architecture flow" width="780"/>
+  <img src="https://raw.githubusercontent.com/last9/gpu-telemetry/main/docs/diagrams/l9gpu_architecture_flow.svg" alt="l9gpu architecture flow" width="780"/>
 </p>
 
 Collectors on each node normalize NVML / DCGM / amdsmi / hl-smi into the
