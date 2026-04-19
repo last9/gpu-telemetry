@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GO_VERSION: "1.24"
+  GO_VERSION: "1.25"
   OCB_VERSION: "v0.150.0"
 
 jobs:
