@@ -1,0 +1,67 @@
+name: Release Helm chart
+
+on:
+  push:
+    tags:
+      - "chart-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: chart-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  HELM_VERSION: v3.14.0
+
+jobs:
+  release:
+    name: Publish chart to GH Pages + GHCR OCI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Run chart-releaser (GH Pages)
+        uses: helm/chart-releaser-action@v1.6.0
+        with:
+          charts_dir: deploy/helm
+          config: .github/cr.yaml
+        env:
+          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push chart to GHCR (OCI)
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          owner_lc="${OWNER,,}"
+          # Reuse the .tgz chart-releaser already built; fall back if absent.
+          pkg_dir=".cr-release-packages"
+          [ -d "$pkg_dir" ] || {
+            pkg_dir=".chart-dist"
+            mkdir -p "$pkg_dir"
+            helm package deploy/helm/l9gpu --destination "$pkg_dir"
+          }
+          for pkg in "$pkg_dir"/*.tgz; do
+            helm push "$pkg" "oci://ghcr.io/${owner_lc}/charts"
+          done

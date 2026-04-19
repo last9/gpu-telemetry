@@ -1,0 +1,772 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "9.0.0"},
+    {"type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0"},
+    {"type": "panel", "id": "stat", "name": "Stat", "version": ""},
+    {"type": "panel", "id": "bargauge", "name": "Bar gauge", "version": ""},
+    {"type": "panel", "id": "timeseries", "name": "Time series", "version": ""}
+  ],
+  "annotations": {"list": []},
+  "description": "EKS GPU Fleet Overview — operations-level single-pane-of-glass for l9gpu cluster health",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "title": "Multi-Cluster Fleet",
+      "url": "/d/multiclusterfleet/multi-cluster-gpu-fleet-overview",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "Cross-cluster fleet overview",
+      "targetBlank": false
+    },
+    {
+      "title": "Workload Attribution",
+      "url": "/d/eksgpuwork/eks-gpu-workload?var-cluster=${cluster}",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "Per-pod GPU consumption breakdown",
+      "targetBlank": false
+    },
+    {
+      "title": "Health & Reliability",
+      "url": "/d/eksgpuhealth/eks-gpu-health?var-cluster=${cluster}",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "ECC errors, throttling, XID faults",
+      "targetBlank": false
+    },
+    {
+      "title": "Single GPU Deep Dive",
+      "url": "/d/eksgpusingle/eks-single-gpu-deep-dive?var-cluster=${cluster}&var-node=${node}&var-gpu_index=0",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "Full metric breakdown for one GPU",
+      "targetBlank": false
+    }
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Fleet Stats",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "GPU Count",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "count(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\"})",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "blue"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]},
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Avg GPU Utilization",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "avg(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\"}) * 100",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 70},
+              {"color": "red", "value": 90}
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Total Power Draw",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum(gpu_power_draw_watts{k8s_cluster_name=\"$cluster\"})",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "orange"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "orange", "value": null}]},
+          "unit": "watt"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Max Temperature",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "max(gpu_temperature_celsius{k8s_cluster_name=\"$cluster\"})",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 80},
+              {"color": "red", "value": 90}
+            ]
+          },
+          "unit": "celsius"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "ECC Errors (1h)",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum(increase(gpu_ecc_errors{k8s_cluster_name=\"$cluster\"}[1h]))",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "red", "value": 1}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Throttle Events",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum(gpu_throttle_reason{k8s_cluster_name=\"$cluster\"})",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "row",
+      "title": "Per-Node Bar Gauges",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5},
+      "panels": []
+    },
+    {
+      "id": 9,
+      "type": "bargauge",
+      "title": "GPU Utilization by Node / GPU",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_utilization_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"} * 100",
+          "legendFormat": "{{host_name}} GPU{{gpu_index}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "minVizWidth": 0,
+        "minVizHeight": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 70},
+              {"color": "red", "value": 90}
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "type": "bargauge",
+      "title": "GPU Memory Used % by Node / GPU",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_memory_used_percent{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}",
+          "legendFormat": "{{host_name}} GPU{{gpu_index}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "minVizWidth": 0,
+        "minVizHeight": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 70},
+              {"color": "red", "value": 90}
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "type": "row",
+      "title": "Cluster Timeseries",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 14},
+      "panels": []
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Cluster GPU Utilization by Node",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "avg by(host_name)(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}) * 100",
+          "legendFormat": "{{host_name}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 15},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 1, "fillOpacity": 5, "showPoints": "never", "spanNulls": true},
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Cluster Power Draw by Node",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum by(host_name)(gpu_power_draw_watts{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"})",
+          "legendFormat": "{{host_name}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 15},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 1, "fillOpacity": 5, "showPoints": "never", "spanNulls": true},
+          "unit": "watt"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Cluster GPU Memory Used by Node (GiB)",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum by(host_name)(gpu_memory_used_bytes{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}) / 1e9",
+          "legendFormat": "{{host_name}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 15},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 1, "fillOpacity": 5, "showPoints": "never", "spanNulls": true},
+          "unit": "decgbytes"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 15,
+      "type": "row",
+      "title": "Memory Health",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 23},
+      "panels": []
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "ECC Errors by Node / GPU",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "increase(gpu_ecc_errors{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}[$__interval])",
+          "legendFormat": "{{host_name}} GPU{{gpu_index}} ({{gpu_ecc_error_type}})",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 1, "fillOpacity": 10, "showPoints": "never", "spanNulls": true, "drawStyle": "bars"},
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Row Remap Count (memory cell health)",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_row_remap_count{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}",
+          "legendFormat": "{{host_name}} GPU{{gpu_index}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 1, "fillOpacity": 5, "showPoints": "never", "spanNulls": true},
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 18,
+      "type": "row",
+      "title": "Fan Speed & XID Errors",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 32},
+      "panels": []
+    },
+    {
+      "id": 19,
+      "type": "bargauge",
+      "title": "Fan Speed by Node / GPU (%)",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_fan_speed_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"} * 100",
+          "legendFormat": "{{host_name}} GPU{{gpu_index}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 33},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "minVizWidth": 0,
+        "minVizHeight": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 70},
+              {"color": "red", "value": 90}
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "XID Errors by Node / GPU",
+      "description": "XID errors reported by the NVIDIA driver. Any non-zero value warrants investigation.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_xid_errors{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}",
+          "legendFormat": "{{host_name}} GPU{{gpu_index}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 33},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "red"},
+          "custom": {"lineWidth": 1, "fillOpacity": 20, "showPoints": "never", "spanNulls": true, "drawStyle": "bars"},
+          "unit": "short",
+          "min": 0,
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 21,
+      "type": "row",
+      "title": "Host Aggregates",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 41},
+      "panels": []
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "GPU Util — Min / Avg / Max by Node",
+      "description": "Per-node GPU utilization bounds across all GPUs on that node.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "min by(host_name)(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}) * 100",
+          "legendFormat": "min — {{host_name}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "avg by(host_name)(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}) * 100",
+          "legendFormat": "avg — {{host_name}}",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "max by(host_name)(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}) * 100",
+          "legendFormat": "max — {{host_name}}",
+          "refId": "C"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 42},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 1, "fillOpacity": 5, "showPoints": "never", "spanNulls": true},
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "GPU Memory Free by Node (GiB)",
+      "description": "Total free GPU memory summed across all GPUs per node.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum by(host_name)(gpu_memory_free_bytes{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}) / 1e9",
+          "legendFormat": "{{host_name}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 42},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 1, "fillOpacity": 5, "showPoints": "never", "spanNulls": true},
+          "unit": "decgbytes"
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": ["gpu", "eks", "l9gpu", "fleet"],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "label": "Datasource",
+        "pluginId": "prometheus",
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "skipUrlSync": false
+      },
+      {
+        "name": "cluster",
+        "type": "query",
+        "label": "Cluster",
+        "datasource": {"type": "prometheus", "uid": "$datasource"},
+        "definition": "label_values(gpu_utilization_ratio, k8s_cluster_name)",
+        "query": {
+          "query": "label_values(gpu_utilization_ratio, k8s_cluster_name)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "options": [],
+        "refresh": 2,
+        "sort": 1,
+        "skipUrlSync": false
+      },
+      {
+        "name": "node",
+        "type": "query",
+        "label": "Node",
+        "datasource": {"type": "prometheus", "uid": "$datasource"},
+        "definition": "label_values(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\"}, host_name)",
+        "query": {
+          "query": "label_values(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\"}, host_name)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {},
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "options": [],
+        "refresh": 2,
+        "sort": 1,
+        "skipUrlSync": false
+      },
+      {
+        "name": "namespace",
+        "type": "query",
+        "label": "Namespace",
+        "datasource": {"type": "prometheus", "uid": "$datasource"},
+        "definition": "label_values(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\"}, k8s_namespace_name)",
+        "query": {
+          "query": "label_values(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\"}, k8s_namespace_name)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {},
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "options": [],
+        "refresh": 2,
+        "sort": 1,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "timezone": "",
+  "title": "EKS GPU Fleet Overview",
+  "uid": "eksgpuovr",
+  "version": 4
+}

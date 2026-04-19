@@ -1,0 +1,161 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "orgId": 1,
+      "name": "LLM Inference — Latency",
+      "folder": "l9gpu-alerts",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "l9gpu-vllm-ttft",
+          "title": "vLLM TTFT P95 > 2s",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "vllm_ttft_seconds{quantile=\"p95\"}", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "gt", "params": [2]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "5m",
+          "labels": {"severity": "critical", "component": "inference"},
+          "annotations": {"summary": "vLLM time-to-first-token P95 exceeds 2 seconds"}
+        },
+        {
+          "uid": "l9gpu-vllm-e2e",
+          "title": "vLLM E2E Latency P99 > 30s",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "vllm_request_latency_seconds{quantile=\"p99\"}", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "gt", "params": [30]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "5m",
+          "labels": {"severity": "warning", "component": "inference"},
+          "annotations": {"summary": "vLLM end-to-end request latency P99 exceeds 30 seconds"}
+        }
+      ]
+    },
+    {
+      "orgId": 1,
+      "name": "LLM Inference — Capacity",
+      "folder": "l9gpu-alerts",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "l9gpu-vllm-kvcache",
+          "title": "vLLM KV Cache Usage > 90%",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "vllm_cache_usage_ratio{cache_type=\"gpu\"}", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "gt", "params": [0.90]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "5m",
+          "labels": {"severity": "warning", "component": "inference"},
+          "annotations": {"summary": "vLLM GPU KV cache usage exceeds 90% — requests may be rejected or swapped"}
+        },
+        {
+          "uid": "l9gpu-vllm-queue",
+          "title": "vLLM Queue Saturation (> 10 waiting, 5m)",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "sum(vllm_requests_waiting)", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "gt", "params": [10]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "5m",
+          "labels": {"severity": "warning", "component": "inference"},
+          "annotations": {"summary": "vLLM request queue depth exceeds 10 for 5+ minutes — scale out needed"}
+        }
+      ]
+    },
+    {
+      "orgId": 1,
+      "name": "LLM Inference — Throughput",
+      "folder": "l9gpu-alerts",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "l9gpu-vllm-throughput-drop",
+          "title": "vLLM Throughput Drop > 50%",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 600, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "(sum(vllm_generation_throughput_per_second) / sum(vllm_generation_throughput_per_second offset 1h)) * 100", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "lt", "params": [50]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "10m",
+          "labels": {"severity": "critical", "component": "inference"},
+          "annotations": {"summary": "vLLM generation throughput dropped more than 50% compared to 1 hour ago"}
+        },
+        {
+          "uid": "l9gpu-vllm-error-rate",
+          "title": "vLLM Error Rate > 5%",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "(sum(vllm_requests_finished_per_second{finish_reason=\"abort\"}) / sum(vllm_requests_finished_per_second)) * 100", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "gt", "params": [5]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "5m",
+          "labels": {"severity": "critical", "component": "inference"},
+          "annotations": {"summary": "vLLM request abort rate exceeds 5%"}
+        }
+      ]
+    }
+  ]
+}

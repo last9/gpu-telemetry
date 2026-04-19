@@ -1,0 +1,41 @@
+{{/*
+Copyright (c) Last9, Inc.
+All rights reserved.
+*/}}
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "l9gpu.fullname" . }}
+  labels:
+    {{- include "l9gpu.labels" . | nindent 4 }}
+rules:
+  # Required by k8sprocessor to list pods on the local node for GPU attribution.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list", "watch"]
+  # Required by k8sprocessor to fetch node labels for cloud topology attributes
+  # (cloud.availability_zone, cloud.region from topology.kubernetes.io/* labels).
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get"]
+  # Required by k8sprocessor to resolve ReplicaSet → Deployment owner references.
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "l9gpu.fullname" . }}
+  labels:
+    {{- include "l9gpu.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "l9gpu.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "l9gpu.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

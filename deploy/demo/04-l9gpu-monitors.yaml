@@ -1,0 +1,263 @@
+# l9gpu nvml_monitor — DaemonSet on all GPU nodes
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: l9gpu-nvml
+  namespace: l9gpu-demo-v2
+  labels:
+    app: l9gpu-nvml
+    app.kubernetes.io/part-of: l9gpu-demo-v2
+spec:
+  selector:
+    matchLabels:
+      app: l9gpu-nvml
+  template:
+    metadata:
+      labels:
+        app: l9gpu-nvml
+        app.kubernetes.io/part-of: l9gpu-demo-v2
+    spec:
+      nodeSelector:
+        l9gpu/gpu-type: a10g
+      hostPID: true
+      containers:
+      - name: nvml-monitor
+        image: ghcr.io/last9/l9gpu:latest
+        command: ["l9gpu", "nvml_monitor"]
+        args: ["--sink", "otel", "--cluster", "l9gpu-demo-v2"]
+        envFrom:
+        - secretRef:
+            name: l9gpu-otlp-auth
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+---
+# vLLM monitor
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: l9gpu-vllm-monitor
+  namespace: l9gpu-demo-v2
+  labels:
+    app: l9gpu-vllm-monitor
+    app.kubernetes.io/part-of: l9gpu-demo-v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: l9gpu-vllm-monitor
+  template:
+    metadata:
+      labels:
+        app: l9gpu-vllm-monitor
+        app.kubernetes.io/part-of: l9gpu-demo-v2
+    spec:
+      nodeSelector:
+        l9gpu/role: utility
+      containers:
+      - name: monitor
+        image: ghcr.io/last9/l9gpu:latest
+        command: ["l9gpu", "vllm_monitor"]
+        args:
+        - "--sink"
+        - "otel"
+        - "--cluster"
+        - "l9gpu-demo-v2"
+        - "--vllm-endpoint"
+        - "http://vllm-llama.l9gpu-demo-v2.svc:8000/metrics"
+        - "--emit-genai-namespace"
+        envFrom:
+        - secretRef:
+            name: l9gpu-otlp-auth
+---
+# SGLang monitor
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: l9gpu-sglang-monitor
+  namespace: l9gpu-demo-v2
+  labels:
+    app: l9gpu-sglang-monitor
+    app.kubernetes.io/part-of: l9gpu-demo-v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: l9gpu-sglang-monitor
+  template:
+    metadata:
+      labels:
+        app: l9gpu-sglang-monitor
+        app.kubernetes.io/part-of: l9gpu-demo-v2
+    spec:
+      nodeSelector:
+        l9gpu/role: utility
+      containers:
+      - name: monitor
+        image: ghcr.io/last9/l9gpu:latest
+        command: ["l9gpu", "sglang_monitor"]
+        args:
+        - "--sink"
+        - "otel"
+        - "--cluster"
+        - "l9gpu-demo-v2"
+        - "--sglang-endpoint"
+        - "http://sglang-llama.l9gpu-demo-v2.svc:30000/metrics"
+        - "--emit-genai-namespace"
+        envFrom:
+        - secretRef:
+            name: l9gpu-otlp-auth
+---
+# TGI monitor
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: l9gpu-tgi-monitor
+  namespace: l9gpu-demo-v2
+  labels:
+    app: l9gpu-tgi-monitor
+    app.kubernetes.io/part-of: l9gpu-demo-v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: l9gpu-tgi-monitor
+  template:
+    metadata:
+      labels:
+        app: l9gpu-tgi-monitor
+        app.kubernetes.io/part-of: l9gpu-demo-v2
+    spec:
+      nodeSelector:
+        l9gpu/role: utility
+      containers:
+      - name: monitor
+        image: ghcr.io/last9/l9gpu:latest
+        command: ["l9gpu", "tgi_monitor"]
+        args:
+        - "--sink"
+        - "otel"
+        - "--cluster"
+        - "l9gpu-demo-v2"
+        - "--tgi-endpoint"
+        - "http://tgi-llama.l9gpu-demo-v2.svc:8080/metrics"
+        - "--emit-genai-namespace"
+        envFrom:
+        - secretRef:
+            name: l9gpu-otlp-auth
+---
+# Triton monitor
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: l9gpu-triton-monitor
+  namespace: l9gpu-demo-v2
+  labels:
+    app: l9gpu-triton-monitor
+    app.kubernetes.io/part-of: l9gpu-demo-v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: l9gpu-triton-monitor
+  template:
+    metadata:
+      labels:
+        app: l9gpu-triton-monitor
+        app.kubernetes.io/part-of: l9gpu-demo-v2
+    spec:
+      nodeSelector:
+        l9gpu/role: utility
+      containers:
+      - name: monitor
+        image: ghcr.io/last9/l9gpu:latest
+        command: ["l9gpu", "triton_monitor"]
+        args:
+        - "--sink"
+        - "otel"
+        - "--cluster"
+        - "l9gpu-demo-v2"
+        - "--triton-endpoint"
+        - "http://triton-llama.l9gpu-demo-v2.svc:8002/metrics"
+        - "--emit-genai-namespace"
+        envFrom:
+        - secretRef:
+            name: l9gpu-otlp-auth
+---
+# Fleet health monitor
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: l9gpu-fleet-health
+  namespace: l9gpu-demo-v2
+  labels:
+    app: l9gpu-fleet-health
+    app.kubernetes.io/part-of: l9gpu-demo-v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: l9gpu-fleet-health
+  template:
+    metadata:
+      labels:
+        app: l9gpu-fleet-health
+        app.kubernetes.io/part-of: l9gpu-demo-v2
+    spec:
+      nodeSelector:
+        l9gpu/gpu-type: a10g
+      containers:
+      - name: monitor
+        image: ghcr.io/last9/l9gpu:latest
+        command: ["l9gpu", "fleet_health_monitor"]
+        args: ["--sink", "otel", "--cluster", "l9gpu-demo-v2"]
+        envFrom:
+        - secretRef:
+            name: l9gpu-otlp-auth
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+---
+# Cost monitor
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: l9gpu-cost-monitor
+  namespace: l9gpu-demo-v2
+  labels:
+    app: l9gpu-cost-monitor
+    app.kubernetes.io/part-of: l9gpu-demo-v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: l9gpu-cost-monitor
+  template:
+    metadata:
+      labels:
+        app: l9gpu-cost-monitor
+        app.kubernetes.io/part-of: l9gpu-demo-v2
+    spec:
+      nodeSelector:
+        l9gpu/gpu-type: a10g
+      containers:
+      - name: monitor
+        image: ghcr.io/last9/l9gpu:latest
+        command: ["l9gpu", "cost_monitor"]
+        args:
+        - "--sink"
+        - "otel"
+        - "--cluster"
+        - "l9gpu-demo-v2"
+        - "--instance-type"
+        - "g5.12xlarge"
+        - "--vllm-endpoint"
+        - "http://vllm-llama.l9gpu-demo-v2.svc:8000/metrics"
+        - "--co2-grams-per-kwh"
+        - "400"
+        envFrom:
+        - secretRef:
+            name: l9gpu-otlp-auth
+        resources:
+          limits:
+            nvidia.com/gpu: 1

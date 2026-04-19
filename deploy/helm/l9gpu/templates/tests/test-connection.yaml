@@ -1,0 +1,32 @@
+{{/*
+Copyright (c) Last9, Inc.
+All rights reserved.
+*/}}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "l9gpu.fullname" . }}-test-connection
+  labels:
+    {{- include "l9gpu.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  securityContext:
+    {{- toYaml .Values.podSecurityContext | nindent 4 }}
+  containers:
+    - name: l9gpu-version
+      image: {{ include "l9gpu.image" . }}
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      command:
+        - l9gpu
+        - "--version"
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tmp
+      emptyDir:
+        sizeLimit: 64Mi

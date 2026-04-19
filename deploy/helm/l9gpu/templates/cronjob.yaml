@@ -1,0 +1,85 @@
+{{/*
+Copyright (c) Last9, Inc.
+All rights reserved.
+*/}}
+{{- if .Values.healthChecks.enabled -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "l9gpu.fullname" . }}-health-checks
+  labels:
+    {{- include "l9gpu.labels" . | nindent 4 }}
+    app.kubernetes.io/component: health-checks
+spec:
+  schedule: {{ .Values.healthChecks.schedule | quote }}
+  concurrencyPolicy: {{ .Values.healthChecks.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.healthChecks.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.healthChecks.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "l9gpu.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: health-checks
+        spec:
+          serviceAccountName: {{ include "l9gpu.serviceAccountName" . }}
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          restartPolicy: OnFailure
+          containers:
+            - name: health-checks
+              image: {{ include "l9gpu.image" . }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              securityContext:
+                {{- toYaml .Values.securityContext | nindent 16 }}
+              command:
+                - health_checks
+              args:
+                - check-nvidia-smi
+                - {{ .Values.healthChecks.cluster | default "" | quote }}
+                - {{ .Values.healthChecks.checkType | default "nagios" | quote }}
+                {{- range .Values.healthChecks.checks }}
+                - --check
+                - {{ . | quote }}
+                {{- end }}
+                {{- if .Values.healthChecks.sink }}
+                - --sink
+                - {{ .Values.healthChecks.sink | quote }}
+                {{- end }}
+                {{- range .Values.healthChecks.extraArgs }}
+                - {{ . | quote }}
+                {{- end }}
+              {{- with .Values.healthChecks.extraEnv }}
+              env:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              envFrom:
+                - configMapRef:
+                    name: {{ include "l9gpu.fullname" . }}
+                {{- if .Values.otlpSecretName }}
+                - secretRef:
+                    name: {{ .Values.otlpSecretName }}
+                {{- end }}
+              resources:
+                {{- toYaml .Values.healthChecks.resources | nindent 16 }}
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir:
+                sizeLimit: 64Mi
+          {{- with .Values.healthChecks.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.healthChecks.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

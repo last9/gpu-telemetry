@@ -1,0 +1,687 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "9.0.0"},
+    {"type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0"},
+    {"type": "panel", "id": "stat", "name": "Stat", "version": ""},
+    {"type": "panel", "id": "bargauge", "name": "Bar gauge", "version": ""},
+    {"type": "panel", "id": "timeseries", "name": "Time series", "version": ""},
+    {"type": "panel", "id": "table", "name": "Table", "version": ""},
+    {"type": "panel", "id": "heatmap", "name": "Heatmap", "version": ""}
+  ],
+  "annotations": {"list": []},
+  "description": "GPU Fleet Efficiency — are my GPUs being used well? Am I wasting capacity or under-provisioned?",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Fleet Efficiency at a Glance",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Fleet GPU Utilization Score",
+      "description": "Average compute utilization across all GPUs in the fleet. 0–30% = under-utilized (wasted capacity). 30–70% = healthy. >90% = saturated. If persistently low, consider scaling down. If persistently high, scale out.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "avg(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}) * 100",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "blue", "value": null},
+              {"color": "green", "value": 30},
+              {"color": "yellow", "value": 70},
+              {"color": "red", "value": 90}
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Idle GPUs (< 10% utilization)",
+      "description": "Count of GPUs running below 10% utilization — these are wasted resources. Consider rescheduling workloads onto fewer nodes or shutting down idle instances to save cost.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "count(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"} < 0.10) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 4}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Overloaded GPUs (> 90% utilization)",
+      "description": "Count of GPUs at >90% compute utilization — these are bottlenecks. New jobs may queue or experience degraded performance. Consider adding capacity or rebalancing workloads.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "count(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"} > 0.90) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 3}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Memory Pressure (> 80% VRAM)",
+      "description": "Count of GPUs with >80% VRAM in use. High memory pressure causes OOM errors and job failures. Consider smaller batch sizes, model quantization, or more GPU capacity.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "count((gpu_memory_used_bytes{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"} / gpu_memory_total_bytes{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}) > 0.80) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 3}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "type": "row",
+      "title": "Current Utilization Snapshot — Each GPU",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5},
+      "panels": []
+    },
+    {
+      "id": 7,
+      "type": "bargauge",
+      "title": "GPU Compute Utilization — All Devices",
+      "description": "Instant compute utilization per GPU. Dark bar = idle (wasted), bright bar = active (working). Use this to spot imbalanced workloads — some GPUs fully loaded while others sit idle.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_utilization_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"} * 100",
+          "legendFormat": "{{host_name}} GPU{{gpu_index}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "minVizWidth": 0,
+        "minVizHeight": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "blue", "value": null},
+              {"color": "green", "value": 10},
+              {"color": "yellow", "value": 70},
+              {"color": "red", "value": 90}
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "bargauge",
+      "title": "GPU Memory Used — All Devices",
+      "description": "VRAM usage per GPU as a percentage of total capacity. Near 100% = out-of-memory risk. Yellow = monitor closely. Red = reduce batch sizes or add capacity.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "(gpu_memory_used_bytes{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"} / gpu_memory_total_bytes{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}) * 100",
+          "legendFormat": "{{host_name}} GPU{{gpu_index}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "minVizWidth": 0,
+        "minVizHeight": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 70},
+              {"color": "red", "value": 80}
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Utilization Trends Over Time",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 14},
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Fleet Utilization — Min / Average / Max",
+      "description": "Wide gap between Min and Max means load is unbalanced across GPUs. Ideal: all three lines track together at a healthy utilization level. If Max is high while Min is low, workloads are not evenly distributed.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "min(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}) * 100",
+          "legendFormat": "Min",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "avg(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}) * 100",
+          "legendFormat": "Average",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "max(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}) * 100",
+          "legendFormat": "Max",
+          "refId": "C"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 15},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Average GPU Memory Utilization Over Time",
+      "description": "Fleet-wide average VRAM pressure over time. Sustained values above 80% warrant adding memory capacity. Sudden spikes indicate large model loads or memory leaks.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "avg((gpu_memory_used_bytes{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"} / gpu_memory_total_bytes{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"})) * 100",
+          "legendFormat": "Fleet Average",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 15},
+      "options": {
+        "tooltip": {"mode": "single", "sort": "none"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {"mode": "line+area"}
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "transparent", "value": null},
+              {"color": "yellow", "value": 70},
+              {"color": "red", "value": 80}
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "type": "row",
+      "title": "Per-GPU Status Table",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 23},
+      "panels": []
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "GPU Status — All Devices",
+      "description": "Per-GPU snapshot. Sort any column to triage issues. Color coding: green = healthy, yellow = elevated (monitor), red = action required.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_utilization_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"} * 100",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "(gpu_memory_used_bytes{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"} / gpu_memory_total_bytes{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}) * 100",
+          "legendFormat": "",
+          "refId": "B",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_temperature_celsius{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}",
+          "legendFormat": "",
+          "refId": "C",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_power_draw_watts{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}",
+          "legendFormat": "",
+          "refId": "D",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_power_state{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}",
+          "legendFormat": "",
+          "refId": "E",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "host_name": "Node",
+              "gpu_index": "GPU Index",
+              "gpu_model": "Model",
+              "Value #A": "Utilization %",
+              "Value #B": "Memory %",
+              "Value #C": "Temp (°C)",
+              "Value #D": "Power (W)",
+              "Value #E": "P-State"
+            },
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "k8s_cluster_name": true,
+              "gpu_uuid": true,
+              "job": true,
+              "instance": true
+            },
+            "indexByName": {
+              "host_name": 0,
+              "gpu_index": 1,
+              "gpu_model": 2,
+              "Value #A": 3,
+              "Value #B": 4,
+              "Value #C": 5,
+              "Value #D": 6,
+              "Value #E": 7
+            }
+          }
+        }
+      ],
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 24},
+      "options": {
+        "footer": {"show": false, "enablePagination": false},
+        "showHeader": true,
+        "sortBy": [{"displayName": "Utilization %", "desc": true}]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Utilization %"},
+            "properties": [
+              {"id": "custom.displayMode", "value": "color-background"},
+              {"id": "unit", "value": "percent"},
+              {"id": "decimals", "value": 1},
+              {"id": "color", "value": {"mode": "thresholds"}},
+              {"id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 70},
+                  {"color": "red", "value": 90}
+                ]
+              }}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Memory %"},
+            "properties": [
+              {"id": "custom.displayMode", "value": "color-background"},
+              {"id": "unit", "value": "percent"},
+              {"id": "decimals", "value": 1},
+              {"id": "color", "value": {"mode": "thresholds"}},
+              {"id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 70},
+                  {"color": "red", "value": 80}
+                ]
+              }}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Temp (°C)"},
+            "properties": [
+              {"id": "custom.displayMode", "value": "color-background"},
+              {"id": "unit", "value": "celsius"},
+              {"id": "color", "value": {"mode": "thresholds"}},
+              {"id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 80},
+                  {"color": "red", "value": 90}
+                ]
+              }}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Power (W)"},
+            "properties": [
+              {"id": "unit", "value": "watt"}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "type": "row",
+      "title": "Activity Heatmap — Utilization Over Time",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 34},
+      "panels": []
+    },
+    {
+      "id": 15,
+      "type": "heatmap",
+      "title": "Fleet Utilization Heatmap",
+      "description": "Each row = one GPU, X-axis = time. Dark = idle (wasted). Bright = active (working). Horizontal stripe = consistently loaded GPU. Blank rows = completely idle nodes ripe for decommission.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_utilization_ratio{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"} * 100",
+          "legendFormat": "{{host_name}} GPU{{gpu_index}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 35},
+      "options": {
+        "calculate": false,
+        "cellGap": 2,
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "max": 100,
+          "min": 0,
+          "mode": "scheme",
+          "reverse": false,
+          "scale": "exponential",
+          "scheme": "Spectral",
+          "steps": 128
+        },
+        "exemplars": {"color": "rgba(255,0,255,0.7)"},
+        "filterValues": {"le": 1e-9},
+        "legend": {"show": true},
+        "rowsFrame": {"layout": "auto"},
+        "tooltip": {"mode": "single", "showColorScale": false, "yHistogram": false},
+        "yAxis": {
+          "axisLabel": "",
+          "axisWidth": 0,
+          "decimals": 1,
+          "reverse": false,
+          "unit": "percent"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {"legend": false, "tooltip": false, "viz": false}
+          }
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["gpu", "insights", "decisions"],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "label": "Datasource",
+        "pluginId": "prometheus",
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "skipUrlSync": false
+      },
+      {
+        "name": "cluster",
+        "type": "query",
+        "label": "Cluster",
+        "datasource": {"type": "prometheus", "uid": "$datasource"},
+        "definition": "label_values(gpu_utilization_ratio, k8s_cluster_name)",
+        "query": {
+          "query": "label_values(gpu_utilization_ratio, k8s_cluster_name)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "options": [],
+        "refresh": 2,
+        "sort": 1,
+        "skipUrlSync": false
+      },
+      {
+        "name": "node",
+        "type": "query",
+        "label": "Node",
+        "datasource": {"type": "prometheus", "uid": "$datasource"},
+        "definition": "label_values(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\"}, host_name)",
+        "query": {
+          "query": "label_values(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\"}, host_name)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {},
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "options": [],
+        "refresh": 2,
+        "sort": 1,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "timezone": "",
+  "title": "GPU Fleet Efficiency",
+  "uid": "gpufleeteff",
+  "version": 1
+}

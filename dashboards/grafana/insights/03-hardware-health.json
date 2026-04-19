@@ -1,0 +1,686 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "9.0.0"},
+    {"type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0"},
+    {"type": "panel", "id": "stat", "name": "Stat", "version": ""},
+    {"type": "panel", "id": "table", "name": "Table", "version": ""},
+    {"type": "panel", "id": "timeseries", "name": "Time series", "version": ""}
+  ],
+  "annotations": {"list": []},
+  "description": "Hardware Health at a Glance — are any GPUs failing or degraded? What needs attention?",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Hardware Alerts — What Needs Attention Right Now?",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "New ECC Errors (last 1h)",
+      "description": "Total ECC memory errors (correctable + uncorrectable) in the last hour across all selected GPUs. Any errors = hardware degradation. Uncorrectable errors require immediate attention — the GPU may produce incorrect results.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum(increase(gpu_ecc_errors{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}[1h])) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 5}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "GPUs Being Throttled",
+      "description": "Count of GPUs currently being throttled due to power limits or thermal conditions. Throttled GPUs run slower than their rated speed, degrading job performance. Check temperature and power panels for root cause.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "count(max by(host_name, gpu_index)(gpu_throttle_reason{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}) > 0) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 3}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Max GPU Temperature",
+      "description": "Highest GPU core temperature across all selected GPUs right now. >80°C = thermal throttling may begin. >90°C = cooling failure, immediate action required. Check airflow and data center cooling.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "max(gpu_temperature_celsius{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"})",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 80},
+              {"color": "red", "value": 90}
+            ]
+          },
+          "unit": "celsius"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "XID Errors (last 1h)",
+      "description": "NVIDIA XID error events in the last hour. XID errors indicate serious hardware or driver faults. Any non-zero value is a red flag — check nvidia-smi and kernel logs on the affected node immediately.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum(increase(gpu_xid_errors{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}[1h])) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "red", "value": 1}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "type": "row",
+      "title": "GPU Health Board",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5},
+      "panels": []
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "GPU Health Board",
+      "description": "Per-GPU health snapshot. Sort by Temperature to find hottest GPUs. Color coding: green = healthy, yellow = elevated, red = action required. Throttling YES = GPU is running slower than rated speed.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_temperature_celsius{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum by(host_name, gpu_index)(increase(gpu_ecc_errors{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}[1h]))",
+          "legendFormat": "",
+          "refId": "B",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "clamp_max(max by(host_name, gpu_index)(gpu_throttle_reason{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}), 1)",
+          "legendFormat": "",
+          "refId": "C",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_row_remap_count{k8s_cluster_name=\"$cluster\", host_name=~\"$node\"}",
+          "legendFormat": "",
+          "refId": "D",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "host_name": "Node",
+              "gpu_index": "GPU",
+              "gpu_model": "Model",
+              "Value #A": "Temp (°C)",
+              "Value #B": "ECC Errors (1h)",
+              "Value #C": "Throttling",
+              "Value #D": "Row Remaps"
+            },
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "k8s_cluster_name": true,
+              "gpu_uuid": true,
+              "job": true,
+              "instance": true
+            },
+            "indexByName": {
+              "host_name": 0,
+              "gpu_index": 1,
+              "gpu_model": 2,
+              "Value #A": 3,
+              "Value #B": 4,
+              "Value #C": 5,
+              "Value #D": 6
+            }
+          }
+        }
+      ],
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 6},
+      "options": {
+        "footer": {"show": false, "enablePagination": false},
+        "showHeader": true,
+        "sortBy": [{"displayName": "Temp (°C)", "desc": true}]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Temp (°C)"},
+            "properties": [
+              {"id": "custom.displayMode", "value": "color-background"},
+              {"id": "unit", "value": "celsius"},
+              {"id": "color", "value": {"mode": "thresholds"}},
+              {"id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 80},
+                  {"color": "red", "value": 90}
+                ]
+              }}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "ECC Errors (1h)"},
+            "properties": [
+              {"id": "custom.displayMode", "value": "color-background"},
+              {"id": "decimals", "value": 0},
+              {"id": "color", "value": {"mode": "thresholds"}},
+              {"id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "red", "value": 5}
+                ]
+              }}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Throttling"},
+            "properties": [
+              {"id": "custom.displayMode", "value": "color-background"},
+              {"id": "color", "value": {"mode": "thresholds"}},
+              {"id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "red", "value": 1}
+                ]
+              }},
+              {"id": "mappings", "value": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {"text": "No", "color": "green", "index": 0},
+                    "1": {"text": "YES", "color": "red", "index": 1}
+                  }
+                }
+              ]}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Row Remaps"},
+            "properties": [
+              {"id": "custom.displayMode", "value": "color-background"},
+              {"id": "decimals", "value": 0},
+              {"id": "color", "value": {"mode": "thresholds"}},
+              {"id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 1}
+                ]
+              }}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": "row",
+      "title": "Temperature — Are GPUs Running Too Hot?",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 16},
+      "panels": []
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "GPU Temperature per Device",
+      "description": "Core temperature per GPU over time. Sustained temperature above 80°C triggers thermal throttling (slower performance). Above 90°C = cooling failure — drain the node immediately. Check rack airflow and HVAC.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_temperature_celsius{k8s_cluster_name=\"$cluster\", host_name=~\"$node\", gpu_index=~\"$gpu\"}",
+          "legendFormat": "{{host_name}} GPU{{gpu_index}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 17},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {"mode": "line+area"}
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "transparent", "value": null},
+              {"color": "yellow", "value": 80},
+              {"color": "red", "value": 90}
+            ]
+          },
+          "unit": "celsius"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Throttling & Errors — Performance Degradation Signals",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 25},
+      "panels": []
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Throttle Events by Cause",
+      "description": "Active throttle reasons stacked by cause. Power (software) = power cap hit. Thermal (hardware/software) = GPU too hot. SyncBoost = multi-GPU clock sync. Each non-zero series = a GPU running below rated speed.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum by(gpu_throttle_cause)(gpu_throttle_reason{k8s_cluster_name=\"$cluster\", host_name=~\"$node\", gpu_throttle_cause=~\"power_software|temp_hardware|temp_software|syncboost\"})",
+          "legendFormat": "{{gpu_throttle_cause}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 26},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 20,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {"group": "A", "mode": "normal"}
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "ECC Errors Over Time",
+      "description": "ECC memory error rate. Correctable = hardware corrected the bit flip (warning). Uncorrectable = data corruption occurred — the GPU must be drained and the node inspected. Any uncorrectable spike = immediate action.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum(increase(gpu_ecc_errors{k8s_cluster_name=\"$cluster\", host_name=~\"$node\", gpu_ecc_error_type=\"correctable\"}[5m]))",
+          "legendFormat": "Correctable",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum(increase(gpu_ecc_errors{k8s_cluster_name=\"$cluster\", host_name=~\"$node\", gpu_ecc_error_type=\"uncorrectable\"}[5m]))",
+          "legendFormat": "Uncorrectable",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 26},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "drawStyle": "bars"
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Uncorrectable"},
+            "properties": [
+              {"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Correctable"},
+            "properties": [
+              {"id": "color", "value": {"mode": "fixed", "fixedColor": "yellow"}}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "type": "row",
+      "title": "Long-Term Hardware Degradation",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 34},
+      "panels": []
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "XID Error Events",
+      "description": "NVIDIA XID error events (serious hardware/driver faults) over time. Spikes = error events. Common XID codes: 79=GPU reset, 48=DBE memory error, 74=NVLINK error. Any event = check nvidia-smi dmon and kernel logs on the affected node.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "increase(gpu_xid_errors{k8s_cluster_name=\"$cluster\", host_name=~\"$node\", gpu_index=~\"$gpu\"}[5m])",
+          "legendFormat": "{{host_name}} GPU{{gpu_index}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 35},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "drawStyle": "bars"
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Row Remap Count (Retired DRAM Rows)",
+      "description": "Number of DRAM rows remapped (retired) due to hardware defects. This is a monotonically increasing counter — any value above 0 means the GPU DRAM is physically wearing out. High counts precede total GPU failure.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "gpu_row_remap_count{k8s_cluster_name=\"$cluster\", host_name=~\"$node\", gpu_index=~\"$gpu\"}",
+          "legendFormat": "{{host_name}} GPU{{gpu_index}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 35},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {"mode": "line"}
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "transparent", "value": null},
+              {"color": "yellow", "value": 1}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["gpu", "insights", "decisions"],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "label": "Datasource",
+        "pluginId": "prometheus",
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "skipUrlSync": false
+      },
+      {
+        "name": "cluster",
+        "type": "query",
+        "label": "Cluster",
+        "datasource": {"type": "prometheus", "uid": "$datasource"},
+        "definition": "label_values(gpu_utilization_ratio, k8s_cluster_name)",
+        "query": {
+          "query": "label_values(gpu_utilization_ratio, k8s_cluster_name)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "options": [],
+        "refresh": 2,
+        "sort": 1,
+        "skipUrlSync": false
+      },
+      {
+        "name": "node",
+        "type": "query",
+        "label": "Node",
+        "datasource": {"type": "prometheus", "uid": "$datasource"},
+        "definition": "label_values(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\"}, host_name)",
+        "query": {
+          "query": "label_values(gpu_utilization_ratio{k8s_cluster_name=\"$cluster\"}, host_name)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {},
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "options": [],
+        "refresh": 2,
+        "sort": 1,
+        "skipUrlSync": false
+      },
+      {
+        "name": "gpu",
+        "type": "query",
+        "label": "GPU",
+        "datasource": {"type": "prometheus", "uid": "$datasource"},
+        "definition": "label_values(gpu_temperature_celsius{k8s_cluster_name=\"$cluster\"}, gpu_index)",
+        "query": {
+          "query": "label_values(gpu_temperature_celsius{k8s_cluster_name=\"$cluster\"}, gpu_index)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {},
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "options": [],
+        "refresh": 2,
+        "sort": 1,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "time": {"from": "now-3h", "to": "now"},
+  "timepicker": {},
+  "timezone": "",
+  "title": "Hardware Health at a Glance",
+  "uid": "gpuhwhealth",
+  "version": 1
+}

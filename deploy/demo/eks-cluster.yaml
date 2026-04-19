@@ -1,0 +1,49 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: l9gpu-demo
+  region: us-west-2
+  version: "1.35"
+
+managedNodeGroups:
+  # Primary: 4x A10G for multi-GPU inference demo
+  - name: gpu-a10g-4x
+    instanceType: g5.12xlarge
+    desiredCapacity: 1
+    minSize: 0
+    maxSize: 1
+    volumeSize: 100
+    labels:
+      l9gpu/gpu-type: a10g
+      l9gpu/role: inference
+    tags:
+      project: l9gpu-demo
+
+  # Secondary: 1x A10G for DCGM profiling + fleet health
+  - name: gpu-a10g-1x
+    instanceType: g5.xlarge
+    desiredCapacity: 1
+    minSize: 0
+    maxSize: 1
+    volumeSize: 50
+    labels:
+      l9gpu/gpu-type: a10g
+      l9gpu/role: profiling
+    tags:
+      project: l9gpu-demo
+
+  # Utility: OTel Collector + load generator (no GPU)
+  - name: utility
+    instanceType: m5.large
+    desiredCapacity: 1
+    minSize: 0
+    maxSize: 1
+    volumeSize: 30
+    labels:
+      l9gpu/role: utility
+    tags:
+      project: l9gpu-demo
+
+iam:
+  withOIDC: true

@@ -1,0 +1,50 @@
+# Copyright (c) Last9, Inc.
+# Fleet-Wide Alert Rules — PrometheusRule CRD for kube-prometheus-stack
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: l9gpu-fleet-alerts
+  labels:
+    app.kubernetes.io/name: l9gpu
+    app.kubernetes.io/component: alerts
+spec:
+  groups:
+    - name: fleet-efficiency
+      interval: 60s
+      rules:
+        - alert: FleetHighIdleGPURate
+          expr: |
+            (
+              count(gpu_utilization_ratio{gpu_task_type="compute"} < 0.05)
+              / count(gpu_utilization_ratio{gpu_task_type="compute"})
+            ) > 0.20
+          for: 15m
+          labels:
+            severity: warning
+            component: fleet
+          annotations:
+            summary: "More than 20% of fleet GPUs are idle"
+            description: "{{ $value | printf \"%.0f\" }}% of GPUs across the fleet have <5% utilization for 15 minutes. Review workload scheduling and consider scaling down."
+
+    - name: fleet-health
+      interval: 60s
+      rules:
+        - alert: GPULowHealthScore
+          expr: gpu_health_score_ratio < 0.50
+          for: 5m
+          labels:
+            severity: critical
+            component: fleet
+          annotations:
+            summary: "GPU health score below 50%"
+            description: "GPU {{ $labels.gpu_index }} on {{ $labels.host_name }} ({{ $labels.k8s_cluster_name }}) has health score {{ $value | printf \"%.0f\" }}%. Multiple degradation signals detected — investigate ECC, thermal, and XID metrics."
+
+        - alert: FleetECCErrorRate
+          expr: gpu_ecc_sbe_rate > 10
+          for: 10m
+          labels:
+            severity: warning
+            component: fleet
+          annotations:
+            summary: "GPU ECC single-bit error rate elevated"
+            description: "GPU {{ $labels.gpu_index }} on {{ $labels.host_name }} reports {{ $value | printf \"%.1f\" }} single-bit ECC errors/hour. Memory degradation trend — schedule proactive replacement."

@@ -1,0 +1,8 @@
+# Verification file for Artifact Hub. Allows the Hub to attribute the
+# Helm chart and container images published from this repository.
+#
+# https://artifacthub.io/docs/topics/repositories/#verified-publisher
+repositoryID: ""  # filled in when the repo is registered on Artifact Hub
+owners:
+  - name: Last9 Engineering
+    email: support@last9.io

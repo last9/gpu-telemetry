@@ -1,0 +1,205 @@
+# Copyright (c) Last9, Inc.
+# All rights reserved.
+#
+# Default values for l9gpu Helm chart.
+
+# -- Container image configuration
+image:
+  repository: ghcr.io/last9/gpu-telemetry
+  tag: ""  # defaults to appVersion
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# -- Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# -- Pod-level security context (shared by all components)
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+
+# -- Container-level security context (shared by all components)
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# -- GPU collector selection: enable the collector matching your node's GPU vendor
+collectors:
+  nvidia: true    # l9gpu nvml_monitor
+  amd: false      # l9gpu amd_monitor  (requires ROCm + amdsmi on host)
+  gaudi: false    # l9gpu gaudi_monitor (requires Gaudi driver + hl-smi on host)
+
+# -- Name of an existing Secret whose keys are injected as environment variables
+# into both the monitoring DaemonSet and the health-checks CronJob.
+# The Secret should contain the OTLP credentials needed when sink=otel:
+#   OTEL_EXPORTER_OTLP_ENDPOINT  — e.g. "https://otel-collector.example.com" (no path suffix)
+#   OTEL_EXPORTER_OTLP_HEADERS   — e.g. "Authorization=Bearer <token>"
+#   OTEL_EXPORTER_OTLP_TIMEOUT   — export timeout in seconds (e.g. "30")
+# Leave empty ("") when using an unauthenticated in-cluster OTel Collector.
+otlpSecretName: ""
+
+# -- Monitoring collector (DaemonSet) configuration
+monitoring:
+  enabled: true
+  # Sink type: "stdout" for local debugging, "otel" to export via OTLP.
+  # When sink=otel the OTLP endpoint is read from OTEL_EXPORTER_OTLP_ENDPOINT
+  # (set via otlpSecretName or another envFrom source).
+  sink: ""
+  # Cluster name reported in metrics
+  cluster: ""
+  # Collection interval in seconds
+  interval: 60
+  # Additional CLI arguments passed to `l9gpu`
+  extraArgs: []
+
+  # Set to false for pure Kubernetes clusters without Slurm
+  slurmEnabled: true
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Node selector for scheduling
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  # -- Host paths to mount for Slurm / GPU access
+  hostPaths:
+    # Path to Slurm binaries on the host (only used when slurmEnabled: true)
+    slurm: /usr/bin
+    # Path to NVIDIA device files
+    nvidiaDevices: /dev/nvidia0
+
+# -- RBAC: ClusterRole/ClusterRoleBinding for pod listing (required by k8sprocessor)
+rbac:
+  create: true
+
+# -- Health checks (CronJob) configuration
+healthChecks:
+  enabled: true
+  # Cron schedule expression (default: every 15 minutes)
+  schedule: "*/15 * * * *"
+  # Sink for health check results
+  sink: ""
+  # Cluster name reported in health check results
+  cluster: ""
+  # Check type context: "nagios" for standalone/K8s checks; "prolog"/"epilog" for Slurm hooks
+  checkType: nagios
+  # List of nvidia-smi checks to run (maps to --check flags on check_nvidia_smi subcommand)
+  # Valid: gpu_num, running_procs, running_procs_and_kill, clock_freq, gpu_temperature,
+  #        gpu_mem_usage, gpu_retired_pages, ecc_uncorrected_volatile_total,
+  #        ecc_corrected_volatile_total, row_remap, row_remap_pending, row_remap_failed,
+  #        vbios_mismatch
+  checks:
+    - gpu_num
+    - running_procs
+  # Additional CLI arguments appended after --check flags (e.g. --sink-opt, custom thresholds)
+  extraArgs: []
+  # Prevent overlapping health check runs
+  concurrencyPolicy: Forbid
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  nodeSelector: {}
+  tolerations: []
+
+  # Number of successful/failed job runs to keep
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+
+# -- OTel Collector configuration (L3-L6 coverage via standard receivers)
+# Deploys a ConfigMap with full pipeline: dcgm + vllm/triton + hostmetrics + kubeletstats + k8s_cluster
+otelCollector:
+  enabled: false
+  # OTLP HTTP endpoint for the collector to export to (e.g. https://otel-collector.example.com)
+  otlpEndpoint: ""
+  # Optional headers (e.g. Authorization)
+  otlpHeaders: {}
+  # Prometheus scrape interval for DCGM and inference monitors
+  scrapeIntervalSeconds: 15
+  # Optional downsampling: aggregate metrics to N-second intervals (0 = disabled)
+  intervalSeconds: 0
+
+# -- New inference monitors (Phase 7/9)
+tritonEndpoint: "http://localhost:8002/metrics"
+sglangEndpoint: "http://localhost:30000/metrics"
+tgiEndpoint: "http://localhost:8080/metrics"
+
+# -- Cost monitor (Phase 11)
+costMonitor:
+  enabled: false
+  instanceType: ""        # leave empty for EC2 IMDSv2 auto-detect
+  costPerGpuHour: 0.0     # explicit override; 0 = use instance type table
+  idleThreshold: 0.05
+  vllmEndpoint: ""        # optional; enables cost_per_token metrics
+  co2GramsPerKwh: 0.0     # 0 = disabled; 475 = global average grid intensity
+  pue: 1.0                # Power Usage Effectiveness multiplier
+
+# -- Fleet health monitor (Phase 10)
+fleetHealth:
+  enabled: false
+  healthWindowSeconds: 300
+  pushIntervalSeconds: 60
+
+# -- NCCL Inspector monitor (Phase 13)
+nccl:
+  enabled: false
+  logPath: "/tmp/nccl_inspector.jsonl"
+  stragglerThresholdMs: 1000.0
+  pushIntervalSeconds: 30
+
+# -- Alerting rules (PrometheusRule CRDs for kube-prometheus-stack)
+# Enable to deploy pre-built GPU infrastructure, LLM inference, and fleet alerts.
+# Standalone alert rule files are also available in alerts/prometheus/ and alerts/grafana/.
+alerts:
+  enabled: false
+  # Additional labels to add to PrometheusRule resources (e.g. for Prometheus label-based routing)
+  additionalLabels: {}
+  thresholds:
+    gpu:
+      temperatureWarning: 85       # °C — warning; typical datacenter GPUs run 60-80°C under load
+      temperatureCritical: 95      # °C — critical; thermal shutdown risk above 100°C
+      idleUtilization: 0.05        # fraction (0-1); GPUs below this are considered idle
+      idleDuration: "15m"          # how long a GPU must be idle before alerting
+      memoryUsedPercent: 95        # percent (0-100); OOM errors imminent above this
+    inference:
+      ttftP95Seconds: 2            # seconds; user-perceptible delay >200ms, poor experience >500ms
+      kvCacheUsage: 0.90           # fraction (0-1); requests swapped/rejected above this
+      kvCacheUsagePercent: 90      # same as above, pre-computed for annotation display
+      requestsWaiting: 10          # count; sustained queue = scale out needed
+      throughputDropPercent: 50    # percent drop vs 1h ago; detects regressions
+    fleet:
+      idleGpuPercent: 20           # percent of fleet GPUs idle; cost optimization signal
+      healthScoreMin: 50           # percent (0-100); composite score from ECC, thermal, XID
+
+# -- xpu-perf eBPF+CUPTI profiler sidecar (Phase 14 — not yet implemented)
+xpuPerf:
+  enabled: false
+  otlpEndpoint: ""
+  sampleRateHz: 100
+  kernelMetricsEnabled: true
+  image:
+    repository: ghcr.io/last9/xpu-perf
+    tag: ""

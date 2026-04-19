@@ -1,0 +1,202 @@
+{{- if .Values.otelCollector.enabled }}
+# OTel Collector ConfigMap — comprehensive GPU + host + container telemetry pipeline.
+# Sources: dcgm-exporter (:9400), l9gpu inference monitors, hostmetrics, kubeletstats, k8s_cluster
+# Processors: batch, resource enrichment (gpu labels + model labels), memory limiter
+# Exporters: OTLP HTTP to configured backend
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "l9gpu.fullname" . }}-otelcol-config
+  labels:
+    {{- include "l9gpu.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    receivers:
+      # ---- L1: GPU hardware via dcgm-exporter ----
+      prometheus/dcgm:
+        config:
+          scrape_configs:
+            - job_name: dcgm
+              scrape_interval: {{ .Values.otelCollector.scrapeIntervalSeconds | default 15 }}s
+              static_configs:
+                - targets:
+                    - localhost:9400
+
+      # ---- L6: Inference engine metrics ----
+      {{- if .Values.collectors.vllm }}
+      prometheus/vllm:
+        config:
+          scrape_configs:
+            - job_name: vllm
+              scrape_interval: 15s
+              static_configs:
+                - targets:
+                    - {{ .Values.vllmEndpoint | default "localhost:8000" | trimPrefix "http://" | trimSuffix "/metrics" }}
+      {{- end }}
+
+      {{- if .Values.collectors.triton }}
+      prometheus/triton:
+        config:
+          scrape_configs:
+            - job_name: triton
+              scrape_interval: 15s
+              static_configs:
+                - targets:
+                    - {{ .Values.tritonEndpoint | default "localhost:8002" | trimPrefix "http://" | trimSuffix "/metrics" }}
+      {{- end }}
+
+      # ---- L3: Host / OS metrics ----
+      hostmetrics:
+        collection_interval: 30s
+        scrapers:
+          cpu:
+            metrics:
+              system.cpu.utilization:
+                enabled: true
+          memory:
+            metrics:
+              system.memory.utilization:
+                enabled: true
+          disk:
+          network:
+          paging:
+          filesystem:
+          process:
+            mute_process_name_error: true
+            metrics:
+              process.cpu.utilization:
+                enabled: true
+              process.memory.usage:
+                enabled: true
+
+      # ---- L4: Container / K8s metrics ----
+      kubeletstats:
+        collection_interval: 30s
+        auth_type: serviceAccount
+        endpoint: ${env:MY_NODE_NAME}:10250
+        insecure_skip_verify: true
+        metric_groups:
+          - node
+          - pod
+          - container
+
+      k8s_cluster:
+        collection_interval: 60s
+        auth_type: serviceAccount
+
+      # ---- L2/L5/L6: OTLP from l9gpu monitors and training library ----
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    processors:
+      # Prevent OOM in collector
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_percentage: 25
+
+      # Batch for efficiency
+      batch:
+        send_batch_size: 1000
+        timeout: 10s
+
+      # Enrich all metrics with GPU identity + cluster labels
+      resource/gpu_labels:
+        attributes:
+          - key: k8s.cluster.name
+            value: {{ .Values.clusterName | default "" | quote }}
+            action: upsert
+          - key: service.name
+            value: l9gpu
+            action: upsert
+
+      # Downsample high-frequency metrics to reduce cardinality cost
+      {{- if gt (int (.Values.otelCollector.intervalSeconds | default 0)) 0 }}
+      transform/downsample:
+        metric_statements:
+          - context: datapoint
+            statements:
+              - set(time, TruncateTime(time, {{ .Values.otelCollector.intervalSeconds }}s))
+      {{- end }}
+
+      # Drop metrics that are not needed (reduce cardinality)
+      filter/drop_noisy:
+        metrics:
+          exclude:
+            match_type: regexp
+            metric_names:
+              - ".*_total_created$"
+              - "^go_.*"
+              - "^python_.*"
+
+    exporters:
+      otlphttp:
+        endpoint: {{ .Values.otelCollector.otlpEndpoint | required "otelCollector.otlpEndpoint is required" | quote }}
+        {{- if .Values.otelCollector.otlpHeaders }}
+        headers:
+          {{- range $k, $v := .Values.otelCollector.otlpHeaders }}
+          {{ $k }}: {{ $v | quote }}
+          {{- end }}
+        {{- end }}
+        compression: gzip
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+
+      debug:
+        verbosity: basic
+
+    service:
+      pipelines:
+        metrics:
+          receivers:
+            - prometheus/dcgm
+            {{- if .Values.collectors.vllm }}
+            - prometheus/vllm
+            {{- end }}
+            {{- if .Values.collectors.triton }}
+            - prometheus/triton
+            {{- end }}
+            - hostmetrics
+            - kubeletstats
+            - k8s_cluster
+            - otlp
+          processors:
+            - memory_limiter
+            - resource/gpu_labels
+            {{- if gt (int (.Values.otelCollector.intervalSeconds | default 0)) 0 }}
+            - transform/downsample
+            {{- end }}
+            - filter/drop_noisy
+            - batch
+          exporters:
+            - otlphttp
+
+        traces:
+          receivers:
+            - otlp
+          processors:
+            - memory_limiter
+            - resource/gpu_labels
+            - batch
+          exporters:
+            - otlphttp
+
+        logs:
+          receivers:
+            - otlp
+          processors:
+            - memory_limiter
+            - batch
+          exporters:
+            - otlphttp
+
+      telemetry:
+        logs:
+          level: warn
+{{- end }}

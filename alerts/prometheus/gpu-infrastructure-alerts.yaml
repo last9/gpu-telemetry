@@ -1,0 +1,108 @@
+# Copyright (c) Last9, Inc.
+# GPU Infrastructure Alert Rules — PrometheusRule CRD for kube-prometheus-stack
+#
+# Metric names follow OTel-to-Prometheus conversion:
+#   gpu.temperature (Cel) → gpu_temperature_celsius
+#   gpu.utilization (1)   → gpu_utilization_ratio
+# See docs/METRICS.md for full mapping.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: l9gpu-gpu-infrastructure-alerts
+  labels:
+    app.kubernetes.io/name: l9gpu
+    app.kubernetes.io/component: alerts
+spec:
+  groups:
+    - name: gpu-temperature
+      interval: 60s
+      rules:
+        - alert: GPUTemperatureWarning
+          expr: gpu_temperature_celsius{gpu_temperature_sensor="edge"} > 85
+          for: 5m
+          labels:
+            severity: warning
+            component: gpu
+          annotations:
+            summary: "GPU temperature exceeds 85°C"
+            description: "GPU {{ $labels.gpu_index }} on {{ $labels.host_name }} ({{ $labels.k8s_cluster_name }}) is at {{ $value | printf \"%.0f\" }}°C."
+            runbook: "Check cooling, fan speed, and ambient temperature. Consider reducing workload."
+
+        - alert: GPUTemperatureCritical
+          expr: gpu_temperature_celsius{gpu_temperature_sensor="edge"} > 95
+          for: 2m
+          labels:
+            severity: critical
+            component: gpu
+          annotations:
+            summary: "GPU temperature exceeds 95°C — thermal shutdown risk"
+            description: "GPU {{ $labels.gpu_index }} on {{ $labels.host_name }} ({{ $labels.k8s_cluster_name }}) is at {{ $value | printf \"%.0f\" }}°C. Hardware damage or thermal shutdown imminent."
+
+    - name: gpu-utilization
+      interval: 60s
+      rules:
+        - alert: GPUIdleWaste
+          expr: gpu_utilization_ratio{gpu_task_type="compute"} < 0.05
+          for: 15m
+          labels:
+            severity: warning
+            component: gpu
+          annotations:
+            summary: "GPU idle for 15+ minutes"
+            description: "GPU {{ $labels.gpu_index }} on {{ $labels.host_name }} ({{ $labels.k8s_cluster_name }}) has <5% utilization for 15 minutes. Consider deallocating to reduce cost."
+
+    - name: gpu-memory
+      interval: 60s
+      rules:
+        - alert: GPUMemoryOOMRisk
+          expr: gpu_memory_used_percent > 95
+          for: 5m
+          labels:
+            severity: critical
+            component: gpu
+          annotations:
+            summary: "GPU memory usage exceeds 95%"
+            description: "GPU {{ $labels.gpu_index }} on {{ $labels.host_name }} ({{ $labels.k8s_cluster_name }}) memory at {{ $value | printf \"%.1f\" }}%. OOM errors imminent."
+
+    - name: gpu-reliability
+      interval: 60s
+      rules:
+        - alert: GPUECCUncorrectableErrors
+          expr: increase(gpu_ecc_errors{gpu_ecc_error_type="uncorrectable", gpu_ecc_count_type="volatile"}[5m]) > 0
+          for: 1m
+          labels:
+            severity: critical
+            component: gpu
+          annotations:
+            summary: "Uncorrectable ECC errors detected"
+            description: "GPU {{ $labels.gpu_index }} on {{ $labels.host_name }} ({{ $labels.k8s_cluster_name }}) has uncorrectable ECC errors. Hardware failure risk — schedule replacement."
+
+        - alert: GPUXIDErrors
+          expr: increase(gpu_xid_errors[5m]) > 0
+          for: 1m
+          labels:
+            severity: critical
+            component: gpu
+          annotations:
+            summary: "XID errors detected"
+            description: "GPU {{ $labels.gpu_index }} on {{ $labels.host_name }} ({{ $labels.k8s_cluster_name }}) reported XID errors. Check `dmesg` and NVIDIA driver logs."
+
+        - alert: GPUThrottling
+          expr: gpu_throttle_reason{gpu_throttle_cause=~"power_software|temp_hardware|temp_software"} == 1
+          for: 5m
+          labels:
+            severity: warning
+            component: gpu
+          annotations:
+            summary: "GPU throttling active for 5+ minutes"
+            description: "GPU {{ $labels.gpu_index }} on {{ $labels.host_name }} ({{ $labels.k8s_cluster_name }}) is throttled due to {{ $labels.gpu_throttle_cause }}."
+
+        - alert: GPUPCIeReplayErrors
+          expr: increase(gpu_pcie_replay_count[15m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+            component: gpu
+          annotations:
+            summary: "PCIe replay count increasing"
+            description: "GPU {{ $labels.gpu_index }} on {{ $labels.host_name }} ({{ $labels.k8s_cluster_name }}) has PCIe replay errors. Possible link degradation — check slot seating and cable integrity."

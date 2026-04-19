@@ -1,0 +1,15 @@
+[Unit]
+Description=Collect and publish NVML metrics.
+After=network.target
+
+[Service]
+Type=simple
+User=cluster_monitor
+EnvironmentFile=-/etc/l9gpu/env
+ExecStart=/usr/bin/l9gpu nvml_monitor
+Restart=on-failure
+RestartSec=300
+Slice=l9gpu_nvml_resources.slice
+
+[Install]
+WantedBy=multi-user.target

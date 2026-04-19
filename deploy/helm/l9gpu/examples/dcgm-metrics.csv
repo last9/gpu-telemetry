@@ -1,0 +1,70 @@
+# DCGM metrics for dcgm-exporter — includes core device metrics + profiling counters.
+#
+# Copy this file to a ConfigMap and mount it at /etc/dcgm-exporter/dcgm-metrics.csv
+# (see dcgm-exporter-values.yaml for mount configuration).
+#
+# Profiling counters (DCGM_FI_PROF_*) require:
+#   - Driver >= 418.x
+#   - dcgm-exporter image >= 2.3.x
+#   - No other process holding the profiling lock (e.g. nvprof, nsight)
+#
+# Format: DCGM field name, metric type, help string
+
+# ---- Core utilization ----
+DCGM_FI_DEV_GPU_UTIL,        gauge, GPU utilization (%).
+DCGM_FI_DEV_MEM_COPY_UTIL,   gauge, Memory utilization (%).
+
+# ---- Memory ----
+DCGM_FI_DEV_FB_FREE,         gauge, Framebuffer memory free (MiB).
+DCGM_FI_DEV_FB_USED,         gauge, Framebuffer memory used (MiB).
+DCGM_FI_DEV_FB_TOTAL,        gauge, Framebuffer memory total (MiB).
+
+# ---- Power & temperature ----
+DCGM_FI_DEV_POWER_USAGE,     gauge, Power draw (W).
+DCGM_FI_DEV_GPU_TEMP,        gauge, GPU temperature (°C).
+DCGM_FI_DEV_MEMORY_TEMP,     gauge, Memory temperature (°C).
+
+# ---- Clocks ----
+DCGM_FI_DEV_SM_CLOCK,        gauge, SM clock frequency (MHz).
+DCGM_FI_DEV_MEM_CLOCK,       gauge, Memory clock frequency (MHz).
+
+# ---- ECC errors ----
+DCGM_FI_DEV_ECC_SBE_VOL_TOTAL, counter, ECC single-bit errors volatile total.
+DCGM_FI_DEV_ECC_DBE_VOL_TOTAL, counter, ECC double-bit errors volatile total.
+DCGM_FI_DEV_ECC_SBE_AGG_TOTAL, counter, ECC single-bit errors aggregate total.
+DCGM_FI_DEV_ECC_DBE_AGG_TOTAL, counter, ECC double-bit errors aggregate total.
+
+# ---- PCIe ----
+DCGM_FI_DEV_PCIE_TX_THROUGHPUT, counter, PCIe TX throughput KB/s since last query.
+DCGM_FI_DEV_PCIE_RX_THROUGHPUT, counter, PCIe RX throughput KB/s since last query.
+DCGM_FI_DEV_PCIE_REPLAY_COUNTER, counter, PCIe replay counter.
+
+# ---- XID errors ----
+DCGM_FI_DEV_XID_ERRORS,     gauge, XID error value (most recent).
+
+
+# ===== PROFILING COUNTERS =====
+# These require the profiling lock; only one profiling client at a time.
+# Reported as fractions (0.0 – 1.0); multiply by 100 for percent in dashboards.
+
+# SM utilization
+DCGM_FI_PROF_GR_ENGINE_ACTIVE, gauge, Fraction of time the graphics/compute engine is active.
+DCGM_FI_PROF_SM_ACTIVE,        gauge, Fraction of time at least one warp is active on an SM.
+DCGM_FI_PROF_SM_OCCUPANCY,     gauge, Fraction of warps resident on SM vs. theoretical maximum.
+
+# Compute pipe utilization
+DCGM_FI_PROF_PIPE_TENSOR_ACTIVE, gauge, Fraction of cycles the tensor (matrix) core pipe is active.
+DCGM_FI_PROF_PIPE_FP64_ACTIVE,   gauge, Fraction of cycles the FP64 pipe is active.
+DCGM_FI_PROF_PIPE_FP32_ACTIVE,   gauge, Fraction of cycles the FP32 pipe is active.
+DCGM_FI_PROF_PIPE_FP16_ACTIVE,   gauge, Fraction of cycles the FP16 pipe is active.
+
+# Memory bandwidth
+DCGM_FI_PROF_DRAM_ACTIVE,        gauge, Fraction of cycles DRAM is actively transferring data.
+
+# PCIe bandwidth (profiling)
+DCGM_FI_PROF_PCIE_TX_BYTES,      counter, PCIe transmit bandwidth (bytes/sec).
+DCGM_FI_PROF_PCIE_RX_BYTES,      counter, PCIe receive bandwidth (bytes/sec).
+
+# NVLink bandwidth (A100/H100 SXM only; always 0 on T4/A10G)
+DCGM_FI_PROF_NVLINK_TX_BYTES,    counter, NVLink transmit bandwidth (bytes/sec).
+DCGM_FI_PROF_NVLINK_RX_BYTES,    counter, NVLink receive bandwidth (bytes/sec).

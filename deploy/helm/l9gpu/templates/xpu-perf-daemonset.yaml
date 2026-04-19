@@ -1,0 +1,87 @@
+{{- if .Values.xpuPerf.enabled }}
+# xpu-perf eBPF+CUPTI profiler — runs as a privileged DaemonSet sidecar.
+# Exports CUPTI kernel execution spans via OTLP to the configured collector.
+# Requires: privileged security context, hostPID, /proc mount.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "l9gpu.fullname" . }}-xpu-perf
+  labels:
+    {{- include "l9gpu.labels" . | nindent 4 }}
+    app.kubernetes.io/component: xpu-perf
+spec:
+  selector:
+    matchLabels:
+      {{- include "l9gpu.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: xpu-perf
+  template:
+    metadata:
+      labels:
+        {{- include "l9gpu.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: xpu-perf
+    spec:
+      hostPID: true
+      containers:
+        - name: xpu-perf
+          image: "{{ .Values.xpuPerf.image.repository }}:{{ .Values.xpuPerf.image.tag | default .Chart.AppVersion }}"
+          args:
+            - merge
+            - --otlp-endpoint={{ .Values.xpuPerf.otlpEndpoint }}
+            - --node-name=$(MY_NODE_NAME)
+            - -o=/dev/null
+          env:
+            - name: MY_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: MY_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - SYS_ADMIN
+                - SYS_PTRACE
+          volumeMounts:
+            - name: proc
+              mountPath: /proc
+              readOnly: true
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+            - name: modules
+              mountPath: /lib/modules
+              readOnly: true
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+              nvidia.com/gpu: "0"
+            requests:
+              cpu: 100m
+              memory: 128Mi
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: modules
+          hostPath:
+            path: /lib/modules
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

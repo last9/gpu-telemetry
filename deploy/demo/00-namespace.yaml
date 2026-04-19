@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: l9gpu-demo-v2
+  labels:
+    app.kubernetes.io/part-of: l9gpu-demo-v2
+---
+# OTLP auth secret — fill in your own endpoint and credentials before applying.
+# For Basic auth, generate the token with: echo -n 'user:password' | base64
+apiVersion: v1
+kind: Secret
+metadata:
+  name: l9gpu-otlp-auth
+  namespace: l9gpu-demo-v2
+type: Opaque
+stringData:
+  OTEL_EXPORTER_OTLP_ENDPOINT: "<your-otlp-endpoint>"                  # e.g. https://otel-collector.example.com
+  OTEL_EXPORTER_OTLP_HEADERS: "Authorization=Basic <base64-user-pass>" # or "Bearer <token>"
+  OTEL_EXPORTER_OTLP_TIMEOUT: "30"

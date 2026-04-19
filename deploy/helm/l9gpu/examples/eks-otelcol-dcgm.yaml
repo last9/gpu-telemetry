@@ -1,0 +1,154 @@
+# OpenTelemetry Collector Contrib — Helm values for EKS with dcgm-exporter scraping
+#
+# Extends eks-otelcol-k8sattributes.yaml to add a prometheus receiver that scrapes
+# dcgm-exporter on each node. DCGM metrics are forwarded to Last9 with the same
+# k8s_cluster_name label as l9gpu NVML metrics, enabling the DCGM dashboard to
+# use the same cluster filter as the other dashboards.
+#
+# Deployed as a single-replica Deployment (NOT DaemonSet) so each dcgm-exporter
+# pod is scraped exactly once. kubernetes_sd_configs with namespace-scoped pod
+# discovery handles multi-pod DaemonSets automatically.
+#
+# Usage:
+#   helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+#   helm upgrade --install otel-collector-dcgm open-telemetry/opentelemetry-collector \
+#     --namespace monitoring --create-namespace \
+#     -f deploy/helm/l9gpu/examples/eks-otelcol-dcgm.yaml
+#
+# Credentials are read from the `dcgm-otlp-auth` Secret (created during deployment;
+# see AWS_TESTING.md Scenario 8 for the kubectl command that derives it from
+# the existing l9gpu-otlp-auth Secret).
+#
+# Environment variables injected via extraEnvs (see bottom of this file):
+#   LAST9_OTLP_ENDPOINT   — from dcgm-otlp-auth secret
+#   LAST9_OTLP_BASIC_AUTH — from dcgm-otlp-auth secret (value only, no "Authorization=" prefix)
+#   L9GPU_CLUSTER_NAME    — static string; must match l9gpu --cluster value
+
+mode: deployment
+replicaCount: 1
+
+ports:
+  metrics:
+    enabled: true
+    containerPort: 8889
+    servicePort: 8889
+    protocol: TCP
+  # disable unused ports
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: "0.97.0"
+
+serviceAccount:
+  create: true
+  name: otel-collector
+
+
+config:
+  receivers:
+    # Scrape all dcgm-exporter pods in the monitoring namespace exactly once.
+    # kubernetes_sd_configs discovers pods dynamically — no static node IP needed.
+    prometheus/dcgm:
+      config:
+        scrape_configs:
+          - job_name: dcgm-exporter
+            scrape_interval: 30s
+            scrape_timeout: 10s
+            kubernetes_sd_configs:
+              - role: pod
+                namespaces:
+                  names: [monitoring]
+            relabel_configs:
+              - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+                action: keep
+                regex: dcgm-exporter
+              - source_labels: [__meta_kubernetes_pod_ip]
+                action: replace
+                target_label: __address__
+                regex: (.+)
+                replacement: $$1:9400
+              # Preserve node name from pod discovery metadata
+              - source_labels: [__meta_kubernetes_pod_node_name]
+                action: replace
+                target_label: k8s_node_name
+
+  processors:
+    # Inject k8s.cluster.name so the DCGM dashboard cluster variable works
+    resource/dcgm:
+      attributes:
+        - key: k8s.cluster.name
+          value: "${env:L9GPU_CLUSTER_NAME}"
+          action: upsert
+
+    # Rename Prometheus-style labels emitted by dcgm-exporter Kubernetes decorator
+    # to OTel semantic convention attribute names
+    transform/rename_k8s_labels:
+      metric_statements:
+        - context: datapoint
+          statements:
+            # Copy resource-level cluster name to data-point so it appears as a
+            # queryable label in Prometheus/Last9 (mirrors otel.py _resource_labels)
+            - set(attributes["k8s.cluster.name"], resource.attributes["k8s.cluster.name"])
+            # dcgm-exporter emits pod/namespace/container directly (not exported_* prefix)
+            - set(attributes["k8s.pod.name"], attributes["pod"])
+            - delete_key(attributes, "pod")
+            - set(attributes["k8s.namespace.name"], attributes["namespace"])
+            - delete_key(attributes, "namespace")
+            - set(attributes["k8s.container.name"], attributes["container"])
+            - delete_key(attributes, "container")
+            - set(attributes["k8s.node.name"], attributes["k8s_node_name"])
+            - delete_key(attributes, "k8s_node_name")
+            # Drop empty pod_uid to avoid spurious cardinality dimension
+            - delete_key(attributes, "pod_uid")
+
+    batch:
+      send_batch_size: 1000
+      timeout: 10s
+
+    memory_limiter:
+      check_interval: 1s
+      limit_percentage: 75
+      spike_limit_percentage: 15
+
+  exporters:
+    otlphttp:
+      endpoint: "${env:LAST9_OTLP_ENDPOINT}"
+      headers:
+        Authorization: "${env:LAST9_OTLP_BASIC_AUTH}"
+
+  service:
+    telemetry:
+      metrics:
+        address: "0.0.0.0:8889"
+    pipelines:
+      metrics/dcgm:
+        receivers: [prometheus/dcgm]
+        processors: [memory_limiter, resource/dcgm, transform/rename_k8s_labels, batch]
+        exporters: [otlphttp]
+
+# Expose OTLP credentials + cluster identity via environment
+extraEnvs:
+  - name: LAST9_OTLP_ENDPOINT
+    valueFrom:
+      secretKeyRef:
+        name: dcgm-otlp-auth
+        key: LAST9_OTLP_ENDPOINT
+  - name: LAST9_OTLP_BASIC_AUTH
+    valueFrom:
+      secretKeyRef:
+        name: dcgm-otlp-auth
+        key: LAST9_OTLP_BASIC_AUTH
+  - name: KUBE_NODE_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
+  - name: L9GPU_CLUSTER_NAME
+    value: "my-eks-multigpu"

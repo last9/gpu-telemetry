@@ -1,0 +1,5 @@
+# Config for helm/chart-releaser-action, referenced by chart-release.yml.
+# Tag format is governed by the workflow trigger (chart-v*), not this file.
+
+release-name-template: "chart-v{{ .Version }}"
+skip-existing: true

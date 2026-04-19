@@ -1,0 +1,87 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "orgId": 1,
+      "name": "Fleet — Efficiency",
+      "folder": "l9gpu-alerts",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "l9gpu-fleet-idle",
+          "title": "Fleet > 20% GPUs Idle",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 900, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "(count(gpu_utilization_ratio{gpu_task_type=\"compute\"} < 0.05) / count(gpu_utilization_ratio{gpu_task_type=\"compute\"})) * 100", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "gt", "params": [20]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "15m",
+          "labels": {"severity": "warning", "component": "fleet"},
+          "annotations": {"summary": "More than 20% of fleet GPUs are idle — review workload scheduling"}
+        }
+      ]
+    },
+    {
+      "orgId": 1,
+      "name": "Fleet — Health",
+      "folder": "l9gpu-alerts",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "l9gpu-gpu-health-score",
+          "title": "GPU Health Score < 50%",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "gpu_health_score_ratio * 100", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "lt", "params": [50]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "5m",
+          "labels": {"severity": "critical", "component": "fleet"},
+          "annotations": {"summary": "GPU health score below 50% — multiple degradation signals detected"}
+        },
+        {
+          "uid": "l9gpu-fleet-ecc-rate",
+          "title": "GPU ECC Single-Bit Error Rate Elevated",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 600, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "gpu_ecc_sbe_rate", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "gt", "params": [10]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "10m",
+          "labels": {"severity": "warning", "component": "fleet"},
+          "annotations": {"summary": "GPU ECC single-bit error rate elevated — memory degradation trend"}
+        }
+      ]
+    }
+  ]
+}

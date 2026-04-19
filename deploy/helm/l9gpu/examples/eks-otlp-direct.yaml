@@ -1,0 +1,102 @@
+# EKS — Direct OTLP to Last9
+#
+# NOTE: This deployment pattern does NOT include cloud.region or
+# cloud.availability_zone attributes. GPU metrics exported via this
+# configuration will not be filterable by physical location in Last9
+# (multi-AZ or multi-region clusters). To get cloud topology labels,
+# use the eks-otelcol-k8sattributes.yaml pattern instead, which runs
+# an OTel Collector sidecar that reads topology.kubernetes.io/zone and
+# topology.kubernetes.io/region from the node object.
+#
+# Prerequisites:
+#   1. Create the OTLP credentials secret (one-time):
+#      kubectl create secret generic l9gpu-otlp-auth \
+#        -n monitoring \
+#        --from-literal=OTEL_EXPORTER_OTLP_ENDPOINT="https://<your-last9-otlp-endpoint>" \
+#        --from-literal=OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <your-last9-token>" \
+#        --from-literal=OTEL_EXPORTER_OTLP_TIMEOUT="30"
+#
+#   2. Install:
+#      helm install l9gpu ./deploy/helm/l9gpu \
+#        --namespace monitoring \
+#        --values deploy/helm/l9gpu/examples/eks-otlp-direct.yaml
+#
+# Replace the image repository and tag with your ECR URI and the cluster name
+# with your actual cluster identifier.
+
+image:
+  repository: <AWS_ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/l9gpu
+  tag: "latest"
+  pullPolicy: Always
+
+collectors:
+  nvidia: true
+  amd: false
+  gaudi: false
+
+# Reference the secret created above so both the DaemonSet and the
+# health-checks CronJob receive OTLP credentials as environment variables.
+otlpSecretName: l9gpu-otlp-auth
+
+monitoring:
+  sink: "otel"
+  cluster: "my-eks-gpu-cluster"
+  interval: 60
+  slurmEnabled: false
+  extraArgs:
+    - --log-folder
+    - /tmp
+
+  # nvidia.com/gpu: 1 is required so the NVIDIA container runtime injects
+  # libnvidia-ml.so.1 into the container. Without it, NVML will fail with
+  # "NVML Shared Library Not Found". This does consume the GPU resource slot
+  # on the node — for production clusters with real workloads, consider
+  # mounting the NVIDIA library path from the host via a hostPath volume instead.
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+      nvidia.com/gpu: 1
+    requests:
+      cpu: 100m
+      memory: 128Mi
+      nvidia.com/gpu: 1
+
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+
+healthChecks:
+  enabled: true
+  sink: "otel"
+  cluster: "my-eks-gpu-cluster"
+  checkType: nagios
+  checks:
+    - gpu_num
+    - running_procs
+  extraArgs:
+    - --log-folder
+    - /tmp
+    - --gpu_num
+    - "1"
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+      nvidia.com/gpu: 1
+    requests:
+      cpu: 100m
+      memory: 128Mi
+      nvidia.com/gpu: 1
+
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule

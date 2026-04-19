@@ -1,0 +1,69 @@
+# EKS — l9gpu → OpenTelemetry Collector → Last9
+#
+# This is the recommended production architecture. l9gpu sends unauthenticated
+# OTLP to an in-cluster OTel Collector, which adds the Last9 auth header and
+# forwards to the Last9 OTLP endpoint.
+#
+# Prerequisites:
+#   1. Deploy the OTel Collector (see docs/AWS_TESTING.md Scenario 7):
+#      helm install otelcol open-telemetry/opentelemetry-collector \
+#        --namespace monitoring \
+#        --values deploy/helm/l9gpu/examples/otelcol-values.yaml
+#
+#   2. Install l9gpu:
+#      helm install l9gpu ./deploy/helm/l9gpu \
+#        --namespace monitoring \
+#        --values deploy/helm/l9gpu/examples/eks-otel-proxy.yaml
+#
+# Replace the image repository and cluster name as needed.
+# No Kubernetes Secret is required — auth lives in the OTel Collector config.
+
+image:
+  repository: <AWS_ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/l9gpu
+  tag: "latest"
+  pullPolicy: Always
+
+collectors:
+  nvidia: true
+  amd: false
+  gaudi: false
+
+# No secret needed — the OTel Collector handles auth.
+otlpSecretName: ""
+
+monitoring:
+  sink: "otel"
+  cluster: "my-eks-gpu-cluster"
+  interval: 60
+  slurmEnabled: false
+  extraArgs:
+    - "--sink-opt"
+    - "otel_endpoint=http://otelcol-opentelemetry-collector.monitoring.svc.cluster.local:4318"
+
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+
+healthChecks:
+  enabled: true
+  sink: "otel"
+  cluster: "my-eks-gpu-cluster"
+  checkType: nagios
+  checks:
+    - gpu_num
+    - running_procs
+  extraArgs:
+    - "--sink-opt"
+    - "otel_endpoint=http://otelcol-opentelemetry-collector.monitoring.svc.cluster.local:4318"
+
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule

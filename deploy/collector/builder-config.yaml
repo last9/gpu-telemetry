@@ -1,0 +1,33 @@
+# OpenTelemetry Collector Builder (ocb) manifest for l9gpu.
+# Build locally: `builder --config deploy/collector/builder-config.yaml`
+# Published via .github/workflows/collector-release.yml on collector-v* tags.
+
+dist:
+  module: github.com/last9/gpu-telemetry/collector
+  name: l9gpu-collector
+  description: OpenTelemetry Collector distribution with l9gpu processors bundled
+  output_path: ./_build
+  version: 0.1.0
+
+extensions:
+  - gomod: go.opentelemetry.io/collector/extension/zpagesextension v0.126.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.126.0
+
+receivers:
+  - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.126.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.126.0
+
+processors:
+  - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.126.0
+  - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.126.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.126.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.126.0
+  - gomod: github.com/last9/gpu-telemetry/k8sprocessor v0.1.0
+  - gomod: github.com/last9/gpu-telemetry/slurmprocessor v0.1.0
+
+exporters:
+  - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.126.0
+  - gomod: go.opentelemetry.io/collector/exporter/otlpexporter v0.126.0
+  - gomod: go.opentelemetry.io/collector/exporter/otlphttpexporter v0.126.0
+
+connectors: []

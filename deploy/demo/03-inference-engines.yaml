@@ -1,0 +1,272 @@
+# vLLM — primary inference engine (GPU 0 on g5.12xlarge)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-llama
+  namespace: l9gpu-demo-v2
+  labels:
+    app: vllm-llama
+    app.kubernetes.io/part-of: l9gpu-demo-v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-llama
+  template:
+    metadata:
+      labels:
+        app: vllm-llama
+        app.kubernetes.io/part-of: l9gpu-demo-v2
+    spec:
+      nodeSelector:
+        l9gpu/role: inference
+      containers:
+      - name: vllm
+        image: vllm/vllm-openai:latest
+        args:
+        - "--model"
+        - "meta-llama/Llama-3.2-1B-Instruct"
+        - "--port"
+        - "8000"
+        - "--max-model-len"
+        - "2048"
+        - "--enable-prefix-caching"
+        ports:
+        - containerPort: 8000
+          name: api
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+          requests:
+            cpu: "2"
+            memory: 8Gi
+        env:
+        - name: HF_TOKEN
+          value: ""  # Set if using gated models
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-llama
+  namespace: l9gpu-demo-v2
+spec:
+  selector:
+    app: vllm-llama
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: api
+  type: ClusterIP
+---
+# SGLang — second inference engine (GPU 1 on g5.12xlarge)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sglang-llama
+  namespace: l9gpu-demo-v2
+  labels:
+    app: sglang-llama
+    app.kubernetes.io/part-of: l9gpu-demo-v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sglang-llama
+  template:
+    metadata:
+      labels:
+        app: sglang-llama
+        app.kubernetes.io/part-of: l9gpu-demo-v2
+    spec:
+      nodeSelector:
+        l9gpu/role: inference
+      containers:
+      - name: sglang
+        image: lmsysorg/sglang:latest
+        args:
+        - "python3"
+        - "-m"
+        - "sglang.launch_server"
+        - "--model-path"
+        - "meta-llama/Llama-3.2-1B-Instruct"
+        - "--port"
+        - "30000"
+        - "--host"
+        - "0.0.0.0"
+        - "--enable-metrics"
+        ports:
+        - containerPort: 30000
+          name: api
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+          requests:
+            cpu: "2"
+            memory: 8Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sglang-llama
+  namespace: l9gpu-demo-v2
+spec:
+  selector:
+    app: sglang-llama
+  ports:
+  - port: 30000
+    targetPort: 30000
+    name: api
+  type: ClusterIP
+---
+# TGI — HuggingFace Text Generation Inference (GPU 2 on g5.12xlarge)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tgi-llama
+  namespace: l9gpu-demo-v2
+  labels:
+    app: tgi-llama
+    app.kubernetes.io/part-of: l9gpu-demo-v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tgi-llama
+  template:
+    metadata:
+      labels:
+        app: tgi-llama
+        app.kubernetes.io/part-of: l9gpu-demo-v2
+    spec:
+      nodeSelector:
+        l9gpu/role: inference
+      containers:
+      - name: tgi
+        image: ghcr.io/huggingface/text-generation-inference:latest
+        args:
+        - "--model-id"
+        - "meta-llama/Llama-3.2-1B-Instruct"
+        - "--port"
+        - "8080"
+        - "--max-input-tokens"
+        - "1024"
+        - "--max-total-tokens"
+        - "2048"
+        ports:
+        - containerPort: 8080
+          name: api
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+          requests:
+            cpu: "2"
+            memory: 8Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tgi-llama
+  namespace: l9gpu-demo-v2
+spec:
+  selector:
+    app: tgi-llama
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: api
+  type: ClusterIP
+---
+# Triton Inference Server — NVIDIA Triton with a simple ONNX model (GPU 3 on g5.12xlarge)
+# Triton exposes metrics on port 8002 by default.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: triton-llama
+  namespace: l9gpu-demo-v2
+  labels:
+    app: triton-llama
+    app.kubernetes.io/part-of: l9gpu-demo-v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: triton-llama
+  template:
+    metadata:
+      labels:
+        app: triton-llama
+        app.kubernetes.io/part-of: l9gpu-demo-v2
+    spec:
+      nodeSelector:
+        l9gpu/role: inference
+      initContainers:
+      # Fetch a simple ONNX densenet model from the Triton model zoo
+      - name: fetch-model
+        image: curlimages/curl:latest
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          mkdir -p /models/densenet_onnx/1
+          curl -sL -o /models/densenet_onnx/1/model.onnx \
+            "https://github.com/triton-inference-server/server/raw/main/qa/L0_simple_onnx_example/models/densenet_onnx/1/model.onnx"
+          cat > /models/densenet_onnx/config.pbtxt << 'EOF'
+          name: "densenet_onnx"
+          platform: "onnxruntime_onnx"
+          max_batch_size: 0
+          input [
+            { name: "data_0" data_type: TYPE_FP32 dims: [ 3, 224, 224 ] }
+          ]
+          output [
+            { name: "fc6_1" data_type: TYPE_FP32 dims: [ 1000 ] }
+          ]
+          EOF
+        volumeMounts:
+        - name: model-repo
+          mountPath: /models
+      containers:
+      - name: triton
+        image: nvcr.io/nvidia/tritonserver:24.08-py3
+        args:
+        - "tritonserver"
+        - "--model-repository=/models"
+        - "--allow-metrics=true"
+        - "--metrics-port=8002"
+        ports:
+        - containerPort: 8000
+          name: http
+        - containerPort: 8001
+          name: grpc
+        - containerPort: 8002
+          name: metrics
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+          requests:
+            cpu: "2"
+            memory: 8Gi
+        volumeMounts:
+        - name: model-repo
+          mountPath: /models
+      volumes:
+      - name: model-repo
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: triton-llama
+  namespace: l9gpu-demo-v2
+spec:
+  selector:
+    app: triton-llama
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
+  - port: 8001
+    targetPort: 8001
+    name: grpc
+  - port: 8002
+    targetPort: 8002
+    name: metrics
+  type: ClusterIP

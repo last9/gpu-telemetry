@@ -1,0 +1,109 @@
+{{/*
+Copyright (c) Last9, Inc.
+All rights reserved.
+*/}}
+{{- if .Values.monitoring.enabled -}}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "l9gpu.fullname" . }}-monitoring
+  labels:
+    {{- include "l9gpu.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      {{- include "l9gpu.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: monitoring
+  template:
+    metadata:
+      labels:
+        {{- include "l9gpu.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: monitoring
+    spec:
+      serviceAccountName: {{ include "l9gpu.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: l9gpu
+          image: {{ include "l9gpu.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command:
+            - l9gpu
+          args:
+            {{- if .Values.collectors.amd }}
+            - amd_monitor
+            {{- else if .Values.collectors.gaudi }}
+            - gaudi_monitor
+            {{- else }}
+            - nvml_monitor
+            {{- end }}
+            {{- if .Values.monitoring.sink }}
+            - --sink
+            - {{ .Values.monitoring.sink | quote }}
+            {{- end }}
+            {{- if .Values.monitoring.cluster }}
+            - --cluster
+            - {{ .Values.monitoring.cluster | quote }}
+            {{- end }}
+            {{- if .Values.monitoring.interval }}
+            - --interval
+            - {{ .Values.monitoring.interval | quote }}
+            {{- end }}
+            {{- range .Values.monitoring.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          env:
+            - name: MY_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            {{- with .Values.monitoring.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "l9gpu.fullname" . }}
+            {{- if .Values.otlpSecretName }}
+            - secretRef:
+                name: {{ .Values.otlpSecretName }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.monitoring.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.monitoring.slurmEnabled }}
+            - name: slurm-bin
+              mountPath: /usr/local/slurm/bin
+              readOnly: true
+            {{- end }}
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        {{- if .Values.monitoring.slurmEnabled }}
+        - name: slurm-bin
+          hostPath:
+            path: {{ .Values.monitoring.hostPaths.slurm }}
+            type: Directory
+        {{- end }}
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+      {{- with .Values.monitoring.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.monitoring.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.monitoring.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

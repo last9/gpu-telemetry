@@ -1,0 +1,105 @@
+# OpenTelemetry Collector Contrib — Helm values for EKS with k8sattributes (Tier 1)
+#
+# Enriches l9gpu metrics and logs with node-level Kubernetes attributes:
+#   k8s.node.name, cloud.availability_zone, cloud.region
+#
+# Usage:
+#   helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+#   helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+#     --namespace monitoring --create-namespace \
+#     -f eks-otelcol-k8sattributes.yaml
+#
+# Prerequisites:
+#   - otel-collector-contrib image (not the core image)
+#   - RBAC allowing the collector ServiceAccount to read pods and nodes (see below)
+
+mode: daemonset
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: "0.97.0"
+
+serviceAccount:
+  create: true
+  name: otel-collector
+
+clusterRole:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["pods", "nodes", "namespaces"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["apps"]
+      resources: ["replicasets"]
+      verbs: ["get", "list", "watch"]
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+
+  processors:
+    # Enrich all signals with Kubernetes node attributes
+    k8sattributes:
+      auth_type: "serviceAccount"
+      passthrough: false
+      filter:
+        node_from_env_var: KUBE_NODE_NAME   # set via downward API in the DaemonSet env
+      extract:
+        metadata:
+          - k8s.node.name
+          - k8s.cluster.name
+        labels:
+          - tag_name: cloud.availability_zone
+            key: topology.kubernetes.io/zone
+            from: node
+          - tag_name: cloud.region
+            key: topology.kubernetes.io/region
+            from: node
+      pod_association:
+        - sources:
+            - from: resource_attribute
+              name: host.name
+
+    batch:
+      send_batch_size: 1000
+      timeout: 10s
+
+    memory_limiter:
+      check_interval: 1s
+      limit_percentage: 75
+      spike_limit_percentage: 15
+
+  exporters:
+    otlphttp:
+      endpoint: "${LAST9_OTLP_ENDPOINT}"
+      headers:
+        Authorization: "Basic ${LAST9_OTLP_BASIC_AUTH}"
+
+  service:
+    pipelines:
+      metrics:
+        receivers: [otlp]
+        processors: [memory_limiter, k8sattributes, batch]
+        exporters: [otlphttp]
+      logs:
+        receivers: [otlp]
+        processors: [memory_limiter, k8sattributes, batch]
+        exporters: [otlphttp]
+
+# Expose the node name via downward API so k8sattributes can filter pods on this node
+extraEnvs:
+  - name: KUBE_NODE_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
+
+# l9gpu must be configured to send to this collector:
+#   l9gpu nvml_monitor \
+#     --sink otel \
+#     --sink-opts "otel_endpoint=http://<collector-service>:4318" \
+#     --cluster prod-us-east-1

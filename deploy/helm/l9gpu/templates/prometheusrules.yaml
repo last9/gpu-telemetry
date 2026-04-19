@@ -1,0 +1,127 @@
+{{- if .Values.alerts.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "l9gpu.fullname" . }}-alerts
+  labels:
+    {{- include "l9gpu.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alerts
+    {{- with .Values.alerts.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    # ---- GPU Infrastructure ----
+    - name: l9gpu-gpu-temperature
+      interval: 60s
+      rules:
+        - alert: GPUTemperatureWarning
+          expr: gpu_temperature_celsius{gpu_temperature_sensor="edge"} > {{ .Values.alerts.thresholds.gpu.temperatureWarning }}
+          for: 5m
+          labels:
+            severity: warning
+            component: gpu
+          annotations:
+            summary: "GPU temperature exceeds {{ .Values.alerts.thresholds.gpu.temperatureWarning }}°C"
+            description: >-
+              GPU {{`{{ $labels.gpu_index }}`}} on {{`{{ $labels.host_name }}`}}
+              ({{`{{ $labels.k8s_cluster_name }}`}}) is at {{`{{ $value | printf "%.0f" }}`}}°C.
+        - alert: GPUTemperatureCritical
+          expr: gpu_temperature_celsius{gpu_temperature_sensor="edge"} > {{ .Values.alerts.thresholds.gpu.temperatureCritical }}
+          for: 2m
+          labels:
+            severity: critical
+            component: gpu
+          annotations:
+            summary: "GPU temperature exceeds {{ .Values.alerts.thresholds.gpu.temperatureCritical }}°C — thermal shutdown risk"
+    - name: l9gpu-gpu-utilization
+      interval: 60s
+      rules:
+        - alert: GPUIdleWaste
+          expr: gpu_utilization_ratio{gpu_task_type="compute"} < {{ .Values.alerts.thresholds.gpu.idleUtilization }}
+          for: {{ .Values.alerts.thresholds.gpu.idleDuration }}
+          labels:
+            severity: warning
+            component: gpu
+          annotations:
+            summary: "GPU idle — consider deallocating to reduce cost"
+    - name: l9gpu-gpu-memory
+      interval: 60s
+      rules:
+        - alert: GPUMemoryOOMRisk
+          expr: gpu_memory_used_percent > {{ .Values.alerts.thresholds.gpu.memoryUsedPercent }}
+          for: 5m
+          labels:
+            severity: critical
+            component: gpu
+          annotations:
+            summary: "GPU memory usage exceeds {{ .Values.alerts.thresholds.gpu.memoryUsedPercent }}%"
+    - name: l9gpu-gpu-reliability
+      interval: 60s
+      rules:
+        - alert: GPUECCUncorrectableErrors
+          expr: increase(gpu_ecc_errors{gpu_ecc_error_type="uncorrectable", gpu_ecc_count_type="volatile"}[5m]) > 0
+          labels:
+            severity: critical
+            component: gpu
+          annotations:
+            summary: "Uncorrectable ECC errors detected — hardware failure risk"
+        - alert: GPUXIDErrors
+          expr: increase(gpu_xid_errors[5m]) > 0
+          labels:
+            severity: critical
+            component: gpu
+          annotations:
+            summary: "XID errors detected — check NVIDIA driver logs"
+    # ---- LLM Inference ----
+    - name: l9gpu-llm-latency
+      interval: 60s
+      rules:
+        - alert: VLLMHighTTFT
+          expr: vllm_ttft_seconds{quantile="p95"} > {{ .Values.alerts.thresholds.inference.ttftP95Seconds }}
+          for: 5m
+          labels:
+            severity: critical
+            component: inference
+          annotations:
+            summary: "vLLM TTFT P95 exceeds {{ .Values.alerts.thresholds.inference.ttftP95Seconds }}s"
+    - name: l9gpu-llm-capacity
+      interval: 60s
+      rules:
+        - alert: VLLMKVCachePressure
+          expr: vllm_cache_usage_ratio{cache_type="gpu"} > {{ .Values.alerts.thresholds.inference.kvCacheUsage }}
+          for: 5m
+          labels:
+            severity: warning
+            component: inference
+          annotations:
+            summary: "vLLM GPU KV cache usage exceeds {{ .Values.alerts.thresholds.inference.kvCacheUsagePercent }}%"
+        - alert: VLLMQueueSaturation
+          expr: sum by (k8s_cluster_name) (vllm_requests_waiting) > {{ .Values.alerts.thresholds.inference.requestsWaiting }}
+          for: 5m
+          labels:
+            severity: warning
+            component: inference
+          annotations:
+            summary: "vLLM request queue depth exceeds {{ .Values.alerts.thresholds.inference.requestsWaiting }}"
+    # ---- Fleet ----
+    - name: l9gpu-fleet
+      interval: 60s
+      rules:
+        - alert: FleetHighIdleGPURate
+          expr: (count(gpu_utilization_ratio{gpu_task_type="compute"} < 0.05) / count(gpu_utilization_ratio{gpu_task_type="compute"})) > {{ divf .Values.alerts.thresholds.fleet.idleGpuPercent 100.0 }}
+          for: 15m
+          labels:
+            severity: warning
+            component: fleet
+          annotations:
+            summary: "More than {{ .Values.alerts.thresholds.fleet.idleGpuPercent }}% of fleet GPUs are idle"
+        - alert: GPULowHealthScore
+          expr: gpu_health_score_ratio < {{ divf .Values.alerts.thresholds.fleet.healthScoreMin 100.0 }}
+          for: 5m
+          labels:
+            severity: critical
+            component: fleet
+          annotations:
+            summary: "GPU health score below {{ .Values.alerts.thresholds.fleet.healthScoreMin }}%"
+{{- end }}

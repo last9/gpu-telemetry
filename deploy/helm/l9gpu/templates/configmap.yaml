@@ -1,0 +1,16 @@
+{{/*
+Copyright (c) Last9, Inc.
+All rights reserved.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "l9gpu.fullname" . }}
+  labels:
+    {{- include "l9gpu.labels" . | nindent 4 }}
+data:
+  L9GPU_SINK: {{ .Values.monitoring.sink | quote }}
+  L9GPU_CLUSTER: {{ .Values.monitoring.cluster | quote }}
+  L9GPU_INTERVAL: {{ .Values.monitoring.interval | quote }}
+  HEALTH_CHECKS_SINK: {{ .Values.healthChecks.sink | quote }}
+  HEALTH_CHECKS_CLUSTER: {{ .Values.healthChecks.cluster | quote }}

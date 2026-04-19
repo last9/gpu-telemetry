@@ -1,0 +1,868 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "9.0.0"},
+    {"type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0"},
+    {"type": "panel", "id": "stat", "name": "Stat", "version": ""},
+    {"type": "panel", "id": "timeseries", "name": "Time series", "version": ""}
+  ],
+  "annotations": {"list": []},
+  "description": "LLM Inference Performance — is my inference serving users well? Any capacity issues?",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "title": "GPU Fleet Overview",
+      "url": "/d/eksgpuovr/eks-gpu-fleet-overview?var-cluster=${cluster}",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "Correlate inference issues with GPU hardware metrics",
+      "targetBlank": false
+    },
+    {
+      "title": "Multi-Cluster Fleet",
+      "url": "/d/multiclusterfleet/multi-cluster-gpu-fleet-overview",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "Cross-cluster fleet overview",
+      "targetBlank": false
+    }
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Inference Service Health at a Glance",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Total Token Throughput",
+      "description": "Combined prompt + generation tokens per second across all model instances. Low throughput when load exists = capacity problem. Zero throughput = service may be down.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum(vllm_prompt_throughput_per_second{k8s_cluster_name=\"$cluster\"} + vllm_generation_throughput_per_second{k8s_cluster_name=\"$cluster\"})",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 500},
+              {"color": "red", "value": 1000}
+            ]
+          },
+          "unit": "reqps",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Time to First Token (p50)",
+      "description": "Median latency before the user sees the first token of a response. This is the most user-perceptible latency. >200ms = noticeably slow. >500ms = poor user experience. Check GPU utilization and queue depth if elevated.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "vllm_ttft_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p50\"} * 1000",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 200},
+              {"color": "red", "value": 500}
+            ]
+          },
+          "unit": "ms",
+          "noValue": "N/A"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Request Queue Depth",
+      "description": "Number of requests waiting to be processed. A non-zero queue means the service cannot keep up with demand. Sustained queue > 5 = scale out needed.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum(vllm_requests_waiting{k8s_cluster_name=\"$cluster\"}) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 5},
+              {"color": "red", "value": 20}
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "GPU KV Cache Usage",
+      "description": "Percentage of the GPU KV cache used by active requests. Approaching 100% = service will start swapping to CPU or rejecting requests. >90% = scale out or reduce max_num_seqs.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "max(vllm_cache_usage_ratio{k8s_cluster_name=\"$cluster\", cache_type=\"gpu\"}) * 100",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 70},
+              {"color": "red", "value": 90}
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "noValue": "N/A"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "type": "row",
+      "title": "Response Time — How Fast Are Users Getting Responses?",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5},
+      "panels": []
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Time to First Token (TTFT)",
+      "description": "The gap between sending a request and receiving the first output token. p50 = typical user experience. p99 = worst 1% of users. Crosses 500ms line = action required.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "vllm_ttft_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p50\"} * 1000",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "vllm_ttft_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p95\"} * 1000",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "vllm_ttft_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p99\"} * 1000",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {"mode": "line"}
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "transparent", "value": null},
+              {"color": "red", "value": 500}
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Request End-to-End Latency",
+      "description": "Total time from request submission to full response completion. p50 = typical. p99 = tail latency experienced by slowest users. Long tail often caused by large output sequences or queuing.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "vllm_request_latency_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p50\"}",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "vllm_request_latency_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p95\"}",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "vllm_request_latency_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p99\"}",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Throughput — How Much Work Is Being Done?",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 14},
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Token Throughput (Prompt + Generation)",
+      "description": "Total tokens processed per second, split by prefill (prompt) and decode (generation) phases. Stacked area shows total output. Declining throughput under sustained load = GPU bottleneck.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum(vllm_prompt_throughput_per_second{k8s_cluster_name=\"$cluster\"})",
+          "legendFormat": "Prompt Tokens/s",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum(vllm_generation_throughput_per_second{k8s_cluster_name=\"$cluster\"})",
+          "legendFormat": "Generation Tokens/s",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 15},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {"group": "A", "mode": "normal"}
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Request Queue — Running / Waiting / Swapped",
+      "description": "Running = actively processing. Waiting = queued, waiting for GPU slot. Swapped = moved to CPU memory due to KV cache pressure. Spike in waiting = capacity crunch. Any swapped = severe pressure.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum(vllm_requests_running{k8s_cluster_name=\"$cluster\"}) or vector(0)",
+          "legendFormat": "Running",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum(vllm_requests_waiting{k8s_cluster_name=\"$cluster\"}) or vector(0)",
+          "legendFormat": "Waiting",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "sum(vllm_requests_swapped{k8s_cluster_name=\"$cluster\"}) or vector(0)",
+          "legendFormat": "Swapped (CPU)",
+          "refId": "C"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 15},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 20,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {"group": "A", "mode": "normal"}
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Waiting"},
+            "properties": [
+              {"id": "color", "value": {"mode": "fixed", "fixedColor": "yellow"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Swapped (CPU)"},
+            "properties": [
+              {"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "type": "row",
+      "title": "Capacity — Is the Service Running Out of Room?",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 23},
+      "panels": []
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "KV Cache Pressure — GPU and CPU",
+      "description": "Percentage of KV cache blocks in use. GPU cache nearing 100% causes requests to be swapped to CPU (latency spike) or rejected entirely. CPU cache nearing 100% = requests will be rejected. Sustained >90% = scale out or reduce max context length.",
+      "datasource": {"type": "prometheus", "uid": "$datasource"},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "vllm_cache_usage_ratio{k8s_cluster_name=\"$cluster\", cache_type=\"gpu\"} * 100",
+          "legendFormat": "GPU Cache",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "expr": "vllm_cache_usage_ratio{k8s_cluster_name=\"$cluster\", cache_type=\"cpu\"} * 100",
+          "legendFormat": "CPU Cache",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24},
+      "options": {
+        "tooltip": {"mode": "multi", "sort": "desc"},
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {"mode": "line+area"}
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "transparent", "value": null},
+              {"color": "red", "value": 90}
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 14,
+      "type": "row",
+      "title": "NVIDIA NIM",
+      "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 32},
+      "panels": [
+        {
+          "id": 15,
+          "type": "timeseries",
+          "title": "NIM Request Latency",
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "nim_request_latency_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p50\"}",
+              "legendFormat": "p50",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "nim_request_latency_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p99\"}",
+              "legendFormat": "p99",
+              "refId": "B"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 8, "x": 0, "y": 33},
+          "options": {"tooltip": {"mode": "multi", "sort": "desc"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 5, "showPoints": "never", "spanNulls": true}, "unit": "s"}, "overrides": []}
+        },
+        {
+          "id": 16,
+          "type": "timeseries",
+          "title": "NIM Queue Depth & KV Cache",
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "nim_queue_depth{k8s_cluster_name=\"$cluster\"}",
+              "legendFormat": "Queue Depth",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "nim_kv_cache_usage_ratio{k8s_cluster_name=\"$cluster\"} * 100",
+              "legendFormat": "KV Cache %",
+              "refId": "B"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 8, "x": 8, "y": 33},
+          "options": {"tooltip": {"mode": "multi", "sort": "desc"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 5, "showPoints": "never", "spanNulls": true}, "unit": "short"}, "overrides": []}
+        },
+        {
+          "id": 17,
+          "type": "timeseries",
+          "title": "NIM Inter-Token Latency",
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "nim_itl_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p50\"} * 1000",
+              "legendFormat": "ITL p50",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "nim_itl_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p95\"} * 1000",
+              "legendFormat": "ITL p95",
+              "refId": "B"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 8, "x": 16, "y": 33},
+          "options": {"tooltip": {"mode": "multi", "sort": "desc"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 5, "showPoints": "never", "spanNulls": true}, "unit": "ms"}, "overrides": []}
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "row",
+      "title": "Triton Inference Server",
+      "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 33},
+      "panels": [
+        {
+          "id": 19,
+          "type": "timeseries",
+          "title": "Triton Request Latency (ms)",
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "triton_request_latency_microseconds{k8s_cluster_name=\"$cluster\"} / 1000",
+              "legendFormat": "Request {{model_name}}",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "triton_queue_latency_microseconds{k8s_cluster_name=\"$cluster\"} / 1000",
+              "legendFormat": "Queue {{model_name}}",
+              "refId": "B"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 8, "x": 0, "y": 34},
+          "options": {"tooltip": {"mode": "multi", "sort": "desc"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 5, "showPoints": "never", "spanNulls": true}, "unit": "ms"}, "overrides": []}
+        },
+        {
+          "id": 20,
+          "type": "timeseries",
+          "title": "Triton Request Rate",
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "triton_requests_success_per_second{k8s_cluster_name=\"$cluster\"}",
+              "legendFormat": "Success {{model_name}}",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "triton_requests_failed_per_second{k8s_cluster_name=\"$cluster\"}",
+              "legendFormat": "Failed {{model_name}}",
+              "refId": "B"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 8, "x": 8, "y": 34},
+          "options": {"tooltip": {"mode": "multi", "sort": "desc"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true}, "unit": "reqps"}, "overrides": [{"matcher": {"id": "byRegexp", "options": "/Failed/"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]}]}
+        },
+        {
+          "id": 21,
+          "type": "timeseries",
+          "title": "Triton Queue Depth & Batch Size",
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "triton_queue_depth{k8s_cluster_name=\"$cluster\"}",
+              "legendFormat": "Queue {{model_name}}",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "triton_batch_size{k8s_cluster_name=\"$cluster\"}",
+              "legendFormat": "Batch {{model_name}}",
+              "refId": "B"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 8, "x": 16, "y": 34},
+          "options": {"tooltip": {"mode": "multi", "sort": "desc"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 5, "showPoints": "never", "spanNulls": true}, "unit": "short"}, "overrides": []}
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "row",
+      "title": "SGLang",
+      "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 34},
+      "panels": [
+        {
+          "id": 23,
+          "type": "timeseries",
+          "title": "SGLang Latency (TTFT / ITL)",
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "sglang_ttft_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p50\"} * 1000",
+              "legendFormat": "TTFT p50",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "sglang_ttft_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p95\"} * 1000",
+              "legendFormat": "TTFT p95",
+              "refId": "B"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "sglang_itl_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p50\"} * 1000",
+              "legendFormat": "ITL p50",
+              "refId": "C"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "sglang_itl_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p95\"} * 1000",
+              "legendFormat": "ITL p95",
+              "refId": "D"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 8, "x": 0, "y": 35},
+          "options": {"tooltip": {"mode": "multi", "sort": "desc"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 5, "showPoints": "never", "spanNulls": true}, "unit": "ms"}, "overrides": []}
+        },
+        {
+          "id": 24,
+          "type": "timeseries",
+          "title": "SGLang Throughput",
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "sglang_prompt_throughput_per_second{k8s_cluster_name=\"$cluster\"}",
+              "legendFormat": "Prompt tok/s",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "sglang_generation_throughput_per_second{k8s_cluster_name=\"$cluster\"}",
+              "legendFormat": "Gen tok/s",
+              "refId": "B"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 8, "x": 8, "y": 35},
+          "options": {"tooltip": {"mode": "multi", "sort": "desc"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 20, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "normal"}}, "unit": "reqps"}, "overrides": []}
+        },
+        {
+          "id": 25,
+          "type": "timeseries",
+          "title": "SGLang Queue & Cache",
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "sglang_requests_running{k8s_cluster_name=\"$cluster\"}",
+              "legendFormat": "Running",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "sglang_requests_waiting{k8s_cluster_name=\"$cluster\"}",
+              "legendFormat": "Waiting",
+              "refId": "B"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "sglang_cache_hit_rate_ratio{k8s_cluster_name=\"$cluster\"} * 100",
+              "legendFormat": "Cache Hit %",
+              "refId": "C"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 8, "x": 16, "y": 35},
+          "options": {"tooltip": {"mode": "multi", "sort": "desc"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 5, "showPoints": "never", "spanNulls": true}, "unit": "short"}, "overrides": []}
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "type": "row",
+      "title": "HuggingFace TGI",
+      "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 35},
+      "panels": [
+        {
+          "id": 27,
+          "type": "timeseries",
+          "title": "TGI Request Latency",
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "tgi_request_latency_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p50\"}",
+              "legendFormat": "p50",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "tgi_request_latency_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p95\"}",
+              "legendFormat": "p95",
+              "refId": "B"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "tgi_request_latency_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p99\"}",
+              "legendFormat": "p99",
+              "refId": "C"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 8, "x": 0, "y": 36},
+          "options": {"tooltip": {"mode": "multi", "sort": "desc"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 5, "showPoints": "never", "spanNulls": true}, "unit": "s"}, "overrides": []}
+        },
+        {
+          "id": 28,
+          "type": "timeseries",
+          "title": "TGI Time Per Output Token (TPOT)",
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "tgi_tpot_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p50\"} * 1000",
+              "legendFormat": "TPOT p50",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "tgi_tpot_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p95\"} * 1000",
+              "legendFormat": "TPOT p95",
+              "refId": "B"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 8, "x": 8, "y": 36},
+          "options": {"tooltip": {"mode": "multi", "sort": "desc"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 5, "showPoints": "never", "spanNulls": true}, "unit": "ms"}, "overrides": []}
+        },
+        {
+          "id": 29,
+          "type": "timeseries",
+          "title": "TGI Batch Size & Queue Latency",
+          "datasource": {"type": "prometheus", "uid": "$datasource"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "tgi_batch_size{k8s_cluster_name=\"$cluster\", quantile=\"p50\"}",
+              "legendFormat": "Batch p50",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "$datasource"},
+              "expr": "tgi_queue_latency_seconds{k8s_cluster_name=\"$cluster\", quantile=\"p95\"}",
+              "legendFormat": "Queue p95",
+              "refId": "B"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 8, "x": 16, "y": 36},
+          "options": {"tooltip": {"mode": "multi", "sort": "desc"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 5, "showPoints": "never", "spanNulls": true}, "unit": "short"}, "overrides": []}
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["gpu", "insights", "decisions", "inference"],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "label": "Datasource",
+        "pluginId": "prometheus",
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "skipUrlSync": false
+      },
+      {
+        "name": "cluster",
+        "type": "query",
+        "label": "Cluster",
+        "datasource": {"type": "prometheus", "uid": "$datasource"},
+        "definition": "label_values(gpu_utilization_ratio, k8s_cluster_name)",
+        "query": {
+          "query": "label_values(gpu_utilization_ratio, k8s_cluster_name)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "options": [],
+        "refresh": 2,
+        "sort": 1,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "timezone": "",
+  "title": "LLM Inference Performance",
+  "uid": "gpuinference",
+  "version": 1
+}

@@ -1,0 +1,229 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "orgId": 1,
+      "name": "GPU Infrastructure — Temperature",
+      "folder": "l9gpu-alerts",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "l9gpu-gpu-temp-warning",
+          "title": "GPU Temperature Warning (> 85C)",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {
+                "expr": "gpu_temperature_celsius{gpu_temperature_sensor=\"edge\"}",
+                "instant": true,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "datasourceUid": "__expr__",
+              "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {
+                "type": "threshold",
+                "expression": "B",
+                "refId": "C",
+                "conditions": [{"evaluator": {"type": "gt", "params": [85]}, "operator": {"type": "and"}}]
+              }
+            }
+          ],
+          "for": "5m",
+          "labels": {"severity": "warning", "component": "gpu"},
+          "annotations": {
+            "summary": "GPU temperature exceeds 85°C",
+            "description": "GPU {{ index $labels \"gpu_index\" }} on {{ index $labels \"host_name\" }} ({{ index $labels \"k8s_cluster_name\" }}) is at {{ $value }}°C."
+          }
+        },
+        {
+          "uid": "l9gpu-gpu-temp-critical",
+          "title": "GPU Temperature Critical (> 95C)",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "gpu_temperature_celsius{gpu_temperature_sensor=\"edge\"}", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "gt", "params": [95]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "2m",
+          "labels": {"severity": "critical", "component": "gpu"},
+          "annotations": {"summary": "GPU temperature exceeds 95°C — thermal shutdown risk"}
+        }
+      ]
+    },
+    {
+      "orgId": 1,
+      "name": "GPU Infrastructure — Utilization",
+      "folder": "l9gpu-alerts",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "l9gpu-gpu-idle",
+          "title": "GPU Idle Waste (< 5% for 15m)",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 900, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "gpu_utilization_ratio{gpu_task_type=\"compute\"}", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "lt", "params": [0.05]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "15m",
+          "labels": {"severity": "warning", "component": "gpu"},
+          "annotations": {"summary": "GPU idle for 15+ minutes — consider deallocating to reduce cost"}
+        }
+      ]
+    },
+    {
+      "orgId": 1,
+      "name": "GPU Infrastructure — Memory",
+      "folder": "l9gpu-alerts",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "l9gpu-gpu-mem-oom",
+          "title": "GPU Memory OOM Risk (> 95%)",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "gpu_memory_used_percent", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "gt", "params": [95]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "5m",
+          "labels": {"severity": "critical", "component": "gpu"},
+          "annotations": {"summary": "GPU memory usage exceeds 95% — OOM risk"}
+        }
+      ]
+    },
+    {
+      "orgId": 1,
+      "name": "GPU Infrastructure — Reliability",
+      "folder": "l9gpu-alerts",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "l9gpu-gpu-ecc-uncorrectable",
+          "title": "Uncorrectable ECC Errors Detected",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "increase(gpu_ecc_errors{gpu_ecc_error_type=\"uncorrectable\", gpu_ecc_count_type=\"volatile\"}[5m])", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "gt", "params": [0]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "1m",
+          "labels": {"severity": "critical", "component": "gpu"},
+          "annotations": {"summary": "Uncorrectable ECC errors detected — hardware failure risk"}
+        },
+        {
+          "uid": "l9gpu-gpu-xid",
+          "title": "XID Errors Detected",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "increase(gpu_xid_errors[5m])", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "gt", "params": [0]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "1m",
+          "labels": {"severity": "critical", "component": "gpu"},
+          "annotations": {"summary": "XID errors detected — check NVIDIA driver logs"}
+        },
+        {
+          "uid": "l9gpu-gpu-throttle",
+          "title": "GPU Throttling Active (5+ min)",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 300, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "gpu_throttle_reason{gpu_throttle_cause=~\"power_software|temp_hardware|temp_software\"}", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "gt", "params": [0]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "5m",
+          "labels": {"severity": "warning", "component": "gpu"},
+          "annotations": {"summary": "GPU is being throttled — check power and thermal conditions"}
+        },
+        {
+          "uid": "l9gpu-gpu-pcie-replay",
+          "title": "PCIe Replay Errors Increasing",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {"from": 900, "to": 0},
+              "datasourceUid": "${DS_PROMETHEUS}",
+              "model": {"expr": "increase(gpu_pcie_replay_count[15m])", "instant": true, "refId": "A"}
+            },
+            {"refId": "B", "datasourceUid": "__expr__", "model": {"type": "reduce", "expression": "A", "reducer": "last", "refId": "B"}},
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {"type": "threshold", "expression": "B", "refId": "C", "conditions": [{"evaluator": {"type": "gt", "params": [0]}, "operator": {"type": "and"}}]}
+            }
+          ],
+          "for": "5m",
+          "labels": {"severity": "warning", "component": "gpu"},
+          "annotations": {"summary": "PCIe replay count increasing — possible link degradation"}
+        }
+      ]
+    }
+  ]
+}

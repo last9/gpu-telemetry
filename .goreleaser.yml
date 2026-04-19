@@ -1,0 +1,106 @@
+# goreleaser config for l9gpu-collector.
+#
+# Operates on the ocb-generated source tree at ./_build (produced by
+# `builder --config deploy/collector/builder-config.yaml` in CI, before
+# goreleaser runs).
+
+version: 2
+
+project_name: l9gpu-collector
+
+before:
+  hooks:
+    - sh -c "cd _build && go mod tidy"
+
+builds:
+  - id: l9gpu-collector
+    dir: ./_build
+    main: .
+    binary: l9gpu-collector
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: default
+    formats: ["tar.gz"]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        formats: ["zip"]
+    files:
+      - LICENSE
+      - deploy/collector/config.example.yaml
+
+dockers:
+  - id: linux-amd64
+    goos: linux
+    goarch: amd64
+    dockerfile: deploy/collector/Dockerfile
+    image_templates:
+      - "ghcr.io/last9/l9gpu-collector:{{ .Tag }}-amd64"
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.source=https://github.com/last9/gpu-telemetry"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.licenses=MIT"
+    extra_files:
+      - deploy/collector/config.example.yaml
+
+  - id: linux-arm64
+    goos: linux
+    goarch: arm64
+    dockerfile: deploy/collector/Dockerfile
+    image_templates:
+      - "ghcr.io/last9/l9gpu-collector:{{ .Tag }}-arm64"
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.source=https://github.com/last9/gpu-telemetry"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.licenses=MIT"
+    extra_files:
+      - deploy/collector/config.example.yaml
+
+docker_manifests:
+  - name_template: "ghcr.io/last9/l9gpu-collector:{{ .Tag }}"
+    image_templates:
+      - "ghcr.io/last9/l9gpu-collector:{{ .Tag }}-amd64"
+      - "ghcr.io/last9/l9gpu-collector:{{ .Tag }}-arm64"
+
+  - name_template: "ghcr.io/last9/l9gpu-collector:latest"
+    image_templates:
+      - "ghcr.io/last9/l9gpu-collector:{{ .Tag }}-amd64"
+      - "ghcr.io/last9/l9gpu-collector:{{ .Tag }}-arm64"
+
+checksum:
+  name_template: "checksums.txt"
+
+release:
+  github:
+    owner: last9
+    name: gpu-telemetry
+  prerelease: auto
+  draft: false
+  name_template: "l9gpu-collector {{ .Version }}"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^chore:"
+      - "Merge pull request"

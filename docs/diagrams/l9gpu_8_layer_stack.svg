@@ -1,0 +1,145 @@
+<svg width="100%" viewBox="0 0 750 940" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<rect width="750" height="1000" rx="16" fill="rgb(28,28,28)"/>
+
+<!-- L1: GPU Hardware -->
+<rect x="30" y="30" width="660" height="88" rx="12" fill="rgb(113,43,19)" stroke="rgb(240,153,123)" stroke-width="0.5"/>
+<text x="360" y="56" text-anchor="middle" fill="rgb(245,196,179)" font-family="-apple-system, system-ui, sans-serif" font-size="14" font-weight="500">L1 — GPU hardware</text>
+<text x="360" y="72" text-anchor="middle" fill="rgb(240,153,123)" font-family="-apple-system, system-ui, sans-serif" font-size="12">NVML · amdsmi · hl-smi</text>
+<rect x="50" y="82" width="120" height="26" rx="6" fill="rgb(113,43,19)" stroke="rgb(240,153,123)" stroke-width="0.5"/>
+<text x="110" y="99" text-anchor="middle" fill="rgb(240,153,123)" font-family="-apple-system, system-ui, sans-serif" font-size="11">GPU utilization</text>
+<rect x="182" y="82" width="120" height="26" rx="6" fill="rgb(113,43,19)" stroke="rgb(240,153,123)" stroke-width="0.5"/>
+<text x="242" y="99" text-anchor="middle" fill="rgb(240,153,123)" font-family="-apple-system, system-ui, sans-serif" font-size="11">VRAM / HBM</text>
+<rect x="314" y="82" width="130" height="26" rx="6" fill="rgb(113,43,19)" stroke="rgb(240,153,123)" stroke-width="0.5"/>
+<text x="379" y="99" text-anchor="middle" fill="rgb(240,153,123)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Power / thermal</text>
+<rect x="456" y="82" width="118" height="26" rx="6" fill="rgb(113,43,19)" stroke="rgb(240,153,123)" stroke-width="0.5"/>
+<text x="515" y="99" text-anchor="middle" fill="rgb(240,153,123)" font-family="-apple-system, system-ui, sans-serif" font-size="11">NVLink / PCIe</text>
+<rect x="586" y="82" width="90" height="26" rx="6" fill="rgb(113,43,19)" stroke="rgb(240,153,123)" stroke-width="0.5"/>
+<text x="631" y="99" text-anchor="middle" fill="rgb(240,153,123)" font-family="-apple-system, system-ui, sans-serif" font-size="11">ECC / XID</text>
+
+<line x1="360" y1="118" x2="360" y2="148" stroke="rgb(156,154,146)" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="376" y="138" fill="rgb(194,192,182)" font-family="-apple-system, system-ui, sans-serif" font-size="11">pynvml / amdsmi / CLI</text>
+
+<!-- L2: NCCL + CUDA -->
+<rect x="30" y="150" width="660" height="88" rx="12" fill="rgb(74,25,66)" stroke="rgb(212,160,204)" stroke-width="0.5"/>
+<text x="360" y="176" text-anchor="middle" fill="rgb(232,200,226)" font-family="-apple-system, system-ui, sans-serif" font-size="14" font-weight="500">L2 — CUDA runtime &amp; NCCL collectives</text>
+<text x="360" y="192" text-anchor="middle" fill="rgb(212,160,204)" font-family="-apple-system, system-ui, sans-serif" font-size="12">DCGM profiling · NCCL Inspector</text>
+<rect x="50" y="202" width="150" height="26" rx="6" fill="rgb(74,25,66)" stroke="rgb(212,160,204)" stroke-width="0.5"/>
+<text x="125" y="219" text-anchor="middle" fill="rgb(212,160,204)" font-family="-apple-system, system-ui, sans-serif" font-size="11">AllReduce bandwidth</text>
+<rect x="212" y="202" width="150" height="26" rx="6" fill="rgb(74,25,66)" stroke="rgb(212,160,204)" stroke-width="0.5"/>
+<text x="287" y="219" text-anchor="middle" fill="rgb(212,160,204)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Straggler detection</text>
+<rect x="374" y="202" width="140" height="26" rx="6" fill="rgb(74,25,66)" stroke="rgb(212,160,204)" stroke-width="0.5"/>
+<text x="444" y="219" text-anchor="middle" fill="rgb(212,160,204)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Collective duration</text>
+<rect x="526" y="202" width="150" height="26" rx="6" fill="rgb(74,25,66)" stroke="rgb(212,160,204)" stroke-width="0.5"/>
+<text x="601" y="219" text-anchor="middle" fill="rgb(212,160,204)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Bus bandwidth</text>
+
+<line x1="360" y1="238" x2="360" y2="268" stroke="rgb(156,154,146)" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+<!-- L3+L4: Host + K8s (side by side) -->
+<rect x="30" y="270" width="320" height="88" rx="12" fill="rgb(45,58,30)" stroke="rgb(163,196,110)" stroke-width="0.5"/>
+<text x="190" y="296" text-anchor="middle" fill="rgb(200,222,158)" font-family="-apple-system, system-ui, sans-serif" font-size="14" font-weight="500">L3 — Host / OS</text>
+<text x="190" y="312" text-anchor="middle" fill="rgb(163,196,110)" font-family="-apple-system, system-ui, sans-serif" font-size="12">OTel hostmetrics receiver</text>
+<rect x="44" y="322" width="90" height="26" rx="6" fill="rgb(45,58,30)" stroke="rgb(163,196,110)" stroke-width="0.5"/>
+<text x="89" y="339" text-anchor="middle" fill="rgb(163,196,110)" font-family="-apple-system, system-ui, sans-serif" font-size="11">CPU / IO</text>
+<rect x="144" y="322" width="90" height="26" rx="6" fill="rgb(45,58,30)" stroke="rgb(163,196,110)" stroke-width="0.5"/>
+<text x="189" y="339" text-anchor="middle" fill="rgb(163,196,110)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Memory</text>
+<rect x="244" y="322" width="96" height="26" rx="6" fill="rgb(45,58,30)" stroke="rgb(163,196,110)" stroke-width="0.5"/>
+<text x="292" y="339" text-anchor="middle" fill="rgb(163,196,110)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Network</text>
+
+<rect x="370" y="270" width="320" height="88" rx="12" fill="rgb(26,58,74)" stroke="rgb(109,184,212)" stroke-width="0.5"/>
+<text x="530" y="296" text-anchor="middle" fill="rgb(168,216,234)" font-family="-apple-system, system-ui, sans-serif" font-size="14" font-weight="500">L4 — Kubernetes / Slurm</text>
+<text x="530" y="312" text-anchor="middle" fill="rgb(109,184,212)" font-family="-apple-system, system-ui, sans-serif" font-size="12">k8sprocessor · slurmprocessor (Go)</text>
+<rect x="384" y="322" width="86" height="26" rx="6" fill="rgb(26,58,74)" stroke="rgb(109,184,212)" stroke-width="0.5"/>
+<text x="427" y="339" text-anchor="middle" fill="rgb(109,184,212)" font-family="-apple-system, system-ui, sans-serif" font-size="11">GPU → Pod</text>
+<rect x="480" y="322" width="86" height="26" rx="6" fill="rgb(26,58,74)" stroke="rgb(109,184,212)" stroke-width="0.5"/>
+<text x="523" y="339" text-anchor="middle" fill="rgb(109,184,212)" font-family="-apple-system, system-ui, sans-serif" font-size="11">GPU → Job</text>
+<rect x="576" y="322" width="100" height="26" rx="6" fill="rgb(26,58,74)" stroke="rgb(109,184,212)" stroke-width="0.5"/>
+<text x="626" y="339" text-anchor="middle" fill="rgb(109,184,212)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Workload labels</text>
+
+<line x1="360" y1="358" x2="360" y2="388" stroke="rgb(156,154,146)" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+<!-- L5: Training -->
+<rect x="30" y="390" width="660" height="88" rx="12" fill="rgb(61,46,10)" stroke="rgb(212,168,78)" stroke-width="0.5"/>
+<text x="360" y="416" text-anchor="middle" fill="rgb(232,207,142)" font-family="-apple-system, system-ui, sans-serif" font-size="14" font-weight="500">L5 — Training runtime</text>
+<text x="360" y="432" text-anchor="middle" fill="rgb(212,168,78)" font-family="-apple-system, system-ui, sans-serif" font-size="12">l9gpu.training (PyTorch SDK — beta)</text>
+<rect x="50" y="442" width="80" height="26" rx="6" fill="rgb(61,46,10)" stroke="rgb(212,168,78)" stroke-width="0.5"/>
+<text x="90" y="459" text-anchor="middle" fill="rgb(212,168,78)" font-family="-apple-system, system-ui, sans-serif" font-size="11">MFU</text>
+<rect x="142" y="442" width="120" height="26" rx="6" fill="rgb(61,46,10)" stroke="rgb(212,168,78)" stroke-width="0.5"/>
+<text x="202" y="459" text-anchor="middle" fill="rgb(212,168,78)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Gradient norm</text>
+<rect x="274" y="442" width="130" height="26" rx="6" fill="rgb(61,46,10)" stroke="rgb(212,168,78)" stroke-width="0.5"/>
+<text x="339" y="459" text-anchor="middle" fill="rgb(212,168,78)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Checkpoint I/O</text>
+<rect x="416" y="442" width="130" height="26" rx="6" fill="rgb(61,46,10)" stroke="rgb(212,168,78)" stroke-width="0.5"/>
+<text x="481" y="459" text-anchor="middle" fill="rgb(212,168,78)" font-family="-apple-system, system-ui, sans-serif" font-size="11">DataLoader wait</text>
+
+<line x1="360" y1="478" x2="360" y2="508" stroke="rgb(156,154,146)" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="376" y="498" fill="rgb(194,192,182)" font-family="-apple-system, system-ui, sans-serif" font-size="11">OTel SDK push</text>
+
+<!-- L6: Inference -->
+<rect x="30" y="510" width="660" height="88" rx="12" fill="rgb(60,52,137)" stroke="rgb(175,169,236)" stroke-width="0.5"/>
+<text x="360" y="536" text-anchor="middle" fill="rgb(206,203,246)" font-family="-apple-system, system-ui, sans-serif" font-size="14" font-weight="500">L6 — Inference engine</text>
+<text x="360" y="552" text-anchor="middle" fill="rgb(175,169,236)" font-family="-apple-system, system-ui, sans-serif" font-size="12">vLLM · NIM · Triton · SGLang · TGI</text>
+<rect x="50" y="562" width="110" height="26" rx="6" fill="rgb(60,52,137)" stroke="rgb(175,169,236)" stroke-width="0.5"/>
+<text x="105" y="579" text-anchor="middle" fill="rgb(175,169,236)" font-family="-apple-system, system-ui, sans-serif" font-size="11">TTFT / ITL</text>
+<rect x="172" y="562" width="130" height="26" rx="6" fill="rgb(60,52,137)" stroke="rgb(175,169,236)" stroke-width="0.5"/>
+<text x="237" y="579" text-anchor="middle" fill="rgb(175,169,236)" font-family="-apple-system, system-ui, sans-serif" font-size="11">KV cache / evict</text>
+<rect x="314" y="562" width="130" height="26" rx="6" fill="rgb(60,52,137)" stroke="rgb(175,169,236)" stroke-width="0.5"/>
+<text x="379" y="579" text-anchor="middle" fill="rgb(175,169,236)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Batch / preempt</text>
+<rect x="456" y="562" width="120" height="26" rx="6" fill="rgb(60,52,137)" stroke="rgb(175,169,236)" stroke-width="0.5"/>
+<text x="516" y="579" text-anchor="middle" fill="rgb(175,169,236)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Spec decode</text>
+
+<line x1="360" y1="598" x2="360" y2="628" stroke="rgb(156,154,146)" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="376" y="618" fill="rgb(194,192,182)" font-family="-apple-system, system-ui, sans-serif" font-size="11">OTel SDK / OTLP push</text>
+
+<!-- L7 + L8 (side by side) -->
+<rect x="30" y="630" width="320" height="88" rx="12" fill="rgb(8,80,65)" stroke="rgb(93,202,165)" stroke-width="0.5"/>
+<text x="190" y="656" text-anchor="middle" fill="rgb(159,225,203)" font-family="-apple-system, system-ui, sans-serif" font-size="14" font-weight="500">L7 — LLM application</text>
+<text x="190" y="672" text-anchor="middle" fill="rgb(93,202,165)" font-family="-apple-system, system-ui, sans-serif" font-size="12">OTel gen_ai.* conventions</text>
+<rect x="44" y="682" width="88" height="26" rx="6" fill="rgb(8,80,65)" stroke="rgb(93,202,165)" stroke-width="0.5"/>
+<text x="88" y="699" text-anchor="middle" fill="rgb(93,202,165)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Token usage</text>
+<rect x="142" y="682" width="88" height="26" rx="6" fill="rgb(8,80,65)" stroke="rgb(93,202,165)" stroke-width="0.5"/>
+<text x="186" y="699" text-anchor="middle" fill="rgb(93,202,165)" font-family="-apple-system, system-ui, sans-serif" font-size="11">P50 / P99</text>
+<rect x="240" y="682" width="96" height="26" rx="6" fill="rgb(8,80,65)" stroke="rgb(93,202,165)" stroke-width="0.5"/>
+<text x="288" y="699" text-anchor="middle" fill="rgb(93,202,165)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Cache hit rate</text>
+
+<rect x="370" y="630" width="320" height="88" rx="12" fill="rgb(60,20,20)" stroke="rgb(212,112,112)" stroke-width="0.5"/>
+<text x="530" y="656" text-anchor="middle" fill="rgb(240,160,160)" font-family="-apple-system, system-ui, sans-serif" font-size="14" font-weight="500">L8 — Cost / SLO / Health</text>
+<text x="530" y="672" text-anchor="middle" fill="rgb(212,112,112)" font-family="-apple-system, system-ui, sans-serif" font-size="12">fleet_health · cost_monitor</text>
+<rect x="384" y="682" width="100" height="26" rx="6" fill="rgb(60,20,20)" stroke="rgb(212,112,112)" stroke-width="0.4"/>
+<text x="434" y="699" text-anchor="middle" fill="rgb(212,112,112)" font-family="-apple-system, system-ui, sans-serif" font-size="11">$/GPU-hour</text>
+<rect x="494" y="682" width="80" height="26" rx="6" fill="rgb(60,20,20)" stroke="rgb(212,112,112)" stroke-width="0.4"/>
+<text x="534" y="699" text-anchor="middle" fill="rgb(212,112,112)" font-family="-apple-system, system-ui, sans-serif" font-size="11">$/token</text>
+<rect x="584" y="682" width="96" height="26" rx="6" fill="rgb(60,20,20)" stroke="rgb(212,112,112)" stroke-width="0.4"/>
+<text x="632" y="699" text-anchor="middle" fill="rgb(212,112,112)" font-family="-apple-system, system-ui, sans-serif" font-size="11">SLO burn</text>
+
+<line x1="360" y1="718" x2="360" y2="748" stroke="rgb(156,154,146)" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+<!-- OTel Collector -->
+<rect x="160" y="750" width="400" height="52" rx="12" fill="rgb(12,68,124)" stroke="rgb(133,183,235)" stroke-width="0.5"/>
+<text x="360" y="774" text-anchor="middle" fill="rgb(181,212,244)" font-family="-apple-system, system-ui, sans-serif" font-size="14" font-weight="500">OTel Collector</text>
+<text x="360" y="790" text-anchor="middle" fill="rgb(133,183,235)" font-family="-apple-system, system-ui, sans-serif" font-size="12">Receivers → Processors → Exporters</text>
+
+<!-- Fan-out arrows -->
+<line x1="240" y1="802" x2="150" y2="848" stroke="rgb(156,154,146)" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="360" y1="802" x2="360" y2="848" stroke="rgb(156,154,146)" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="480" y1="802" x2="570" y2="848" stroke="rgb(156,154,146)" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+<!-- Backends -->
+<rect x="50" y="852" width="200" height="44" rx="8" fill="rgb(68,68,65)" stroke="rgb(180,178,169)" stroke-width="0.5"/>
+<text x="150" y="874" text-anchor="middle" fill="rgb(211,209,199)" font-family="-apple-system, system-ui, sans-serif" font-size="13" font-weight="500">Metrics backend</text>
+<text x="150" y="888" text-anchor="middle" fill="rgb(180,178,169)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Last9 / Prometheus / Grafana</text>
+
+<rect x="260" y="852" width="200" height="44" rx="8" fill="rgb(68,68,65)" stroke="rgb(180,178,169)" stroke-width="0.5"/>
+<text x="360" y="874" text-anchor="middle" fill="rgb(211,209,199)" font-family="-apple-system, system-ui, sans-serif" font-size="13" font-weight="500">Tracing backend</text>
+<text x="360" y="888" text-anchor="middle" fill="rgb(180,178,169)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Last9 / Jaeger / Tempo</text>
+
+<rect x="470" y="852" width="200" height="44" rx="8" fill="rgb(68,68,65)" stroke="rgb(180,178,169)" stroke-width="0.5"/>
+<text x="570" y="874" text-anchor="middle" fill="rgb(211,209,199)" font-family="-apple-system, system-ui, sans-serif" font-size="13" font-weight="500">Logs backend</text>
+<text x="570" y="888" text-anchor="middle" fill="rgb(180,178,169)" font-family="-apple-system, system-ui, sans-serif" font-size="11">Last9 / Loki / S3</text>
+
+<text x="360" y="916" text-anchor="middle" fill="rgb(120,118,110)" font-family="-apple-system, system-ui, sans-serif" font-size="11">200+ OTel metrics · 3 GPU vendors · 5 inference engines · 25 CLI commands</text>
+</svg>

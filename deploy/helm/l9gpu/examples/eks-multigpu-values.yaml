@@ -1,0 +1,132 @@
+# EKS — Direct OTLP to Last9 (Multi-GPU node, g4dn.12xlarge / 4× T4)
+#
+# Use this values file when your node group contains instances with multiple
+# physical GPUs (e.g. g4dn.12xlarge = 4× T4). No time-slicing is needed
+# because each GPU is independently allocatable: the DaemonSet pod takes 1,
+# the health-checks CronJob takes 1, and 2 remain free for workloads.
+#
+# Differences from eks-otlp-direct.yaml:
+#   - monitoring.cluster / healthChecks.cluster → "my-eks-multigpu"
+#   - healthChecks.extraArgs --gpu_num → "4"  (was "1" for single-GPU nodes)
+#
+# NOTE: This deployment pattern does NOT include cloud.region or
+# cloud.availability_zone attributes. GPU metrics exported via this
+# configuration will not be filterable by physical location in Last9
+# (multi-AZ or multi-region clusters). To get cloud topology labels,
+# use the eks-otelcol-k8sattributes.yaml pattern instead.
+#
+# Prerequisites:
+#   1. Add the gpu-multi node group (g4dn.12xlarge, 4 GPUs):
+#      eksctl create nodegroup \
+#        --cluster my-gpu-lab \
+#        --region ap-south-1 \
+#        --name gpu-multi \
+#        --node-type g4dn.12xlarge \
+#        --nodes 1 --nodes-min 1 --nodes-max 1 \
+#        --node-labels nvidia.com/gpu.present=true \
+#        --node-zones ap-south-1a
+#
+#      # Verify 4 allocatable GPUs
+#      kubectl describe node -l alpha.eksctl.io/nodegroup-name=gpu-multi \
+#        | grep "nvidia.com/gpu"
+#      # Expected: nvidia.com/gpu: 4
+#
+#   2. Create the OTLP credentials secret (one-time, skip if already exists):
+#      kubectl create secret generic l9gpu-otlp-auth \
+#        -n monitoring \
+#        --from-literal=OTEL_EXPORTER_OTLP_ENDPOINT="https://<your-last9-otlp-endpoint>" \
+#        --from-literal=OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <your-last9-token>" \
+#        --from-literal=OTEL_EXPORTER_OTLP_TIMEOUT="30"
+#
+#   3. Install or upgrade:
+#      helm upgrade --install l9gpu ./deploy/helm/l9gpu \
+#        --namespace monitoring \
+#        --values deploy/helm/l9gpu/examples/eks-multigpu-values.yaml
+#
+# Replace the image repository and tag with your ECR URI.
+
+image:
+  repository: <AWS_ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/l9gpu
+  tag: "latest"
+  pullPolicy: Always
+
+collectors:
+  nvidia: true
+  amd: false
+  gaudi: false
+
+# Reference the secret created above so both the DaemonSet and the
+# health-checks CronJob receive OTLP credentials as environment variables.
+otlpSecretName: l9gpu-otlp-auth
+
+monitoring:
+  sink: "otel"
+  cluster: "my-eks-multigpu"
+  interval: 60
+  slurmEnabled: false
+  extraArgs:
+    - --log-folder
+    - /tmp
+  # NVIDIA_VISIBLE_DEVICES=all is required on multi-GPU nodes so NVML enumerates
+  # all physical GPUs. Without it the device plugin restricts the container to
+  # the single GPU slot it was allocated, and nvmlDeviceGetCount() returns 1.
+  extraEnv:
+    - name: NVIDIA_VISIBLE_DEVICES
+      value: all
+
+  # nvidia.com/gpu: 1 is required so the NVIDIA container runtime injects
+  # libnvidia-ml.so.1 into the container. On a 4-GPU node this consumes one
+  # GPU slot; 3 remain allocatable for workloads.
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+      nvidia.com/gpu: 1
+    requests:
+      cpu: 100m
+      memory: 128Mi
+      nvidia.com/gpu: 1
+
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+
+healthChecks:
+  enabled: true
+  sink: "otel"
+  cluster: "my-eks-multigpu"
+  checkType: nagios
+  checks:
+    - gpu_num
+    - running_procs
+  extraArgs:
+    - --log-folder
+    - /tmp
+    - --gpu_num
+    - "4"
+  # Required so nvidia-smi inside the CronJob pod sees all 4 physical GPUs,
+  # not just the 1 allocated by the device plugin.
+  extraEnv:
+    - name: NVIDIA_VISIBLE_DEVICES
+      value: all
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+      nvidia.com/gpu: 1
+    requests:
+      cpu: 100m
+      memory: 128Mi
+      nvidia.com/gpu: 1
+
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule

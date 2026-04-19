@@ -1,0 +1,92 @@
+# Copyright (c) Last9, Inc.
+# LLM Inference Alert Rules — PrometheusRule CRD for kube-prometheus-stack
+#
+# NOTE: Quantile labels — the OTel exporter sets data-point attributes as
+# {"quantile": "p50"}, but some deployments may export as {"quantile": "0.5"}.
+# Adjust the quantile selector if your Prometheus shows numeric quantiles.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: l9gpu-llm-inference-alerts
+  labels:
+    app.kubernetes.io/name: l9gpu
+    app.kubernetes.io/component: alerts
+spec:
+  groups:
+    - name: vllm-latency
+      interval: 60s
+      rules:
+        - alert: VLLMHighTTFT
+          expr: vllm_ttft_seconds{quantile="p95"} > 2
+          for: 5m
+          labels:
+            severity: critical
+            component: inference
+          annotations:
+            summary: "vLLM TTFT P95 exceeds 2s"
+            description: "Time-to-first-token P95 is {{ $value | printf \"%.2f\" }}s on {{ $labels.k8s_cluster_name }}. Users are experiencing slow response starts. Check GPU utilization, queue depth, and KV cache pressure."
+
+        - alert: VLLMHighE2ELatency
+          expr: vllm_request_latency_seconds{quantile="p99"} > 30
+          for: 5m
+          labels:
+            severity: warning
+            component: inference
+          annotations:
+            summary: "vLLM E2E latency P99 exceeds 30s"
+            description: "End-to-end request latency P99 is {{ $value | printf \"%.1f\" }}s on {{ $labels.k8s_cluster_name }}. Likely caused by long output sequences or queuing."
+
+    - name: vllm-capacity
+      interval: 60s
+      rules:
+        - alert: VLLMKVCachePressure
+          expr: vllm_cache_usage_ratio{cache_type="gpu"} > 0.90
+          for: 5m
+          labels:
+            severity: warning
+            component: inference
+          annotations:
+            summary: "vLLM GPU KV cache usage exceeds 90%"
+            description: "KV cache at {{ $value | printf \"%.0f\" }}% on {{ $labels.k8s_cluster_name }}. Requests may be swapped to CPU or rejected. Scale out or reduce max context length."
+
+        - alert: VLLMQueueSaturation
+          expr: sum by (k8s_cluster_name) (vllm_requests_waiting) > 10
+          for: 5m
+          labels:
+            severity: warning
+            component: inference
+          annotations:
+            summary: "vLLM request queue depth exceeds 10 for 5+ minutes"
+            description: "{{ $value | printf \"%.0f\" }} requests waiting in queue on {{ $labels.k8s_cluster_name }}. Service cannot keep up with demand — scale out replicas."
+
+    - name: vllm-throughput
+      interval: 60s
+      rules:
+        - alert: VLLMThroughputDrop
+          expr: |
+            (
+              sum(vllm_generation_throughput_per_second)
+              / sum(vllm_generation_throughput_per_second offset 1h)
+            ) < 0.5
+            and sum(vllm_generation_throughput_per_second offset 1h) > 0
+          for: 10m
+          labels:
+            severity: critical
+            component: inference
+          annotations:
+            summary: "vLLM generation throughput dropped >50% vs 1 hour ago"
+            description: "Current throughput is {{ $value | printf \"%.0f\" }}% of the throughput 1 hour ago. Possible GPU issue, model reload, or configuration regression."
+
+        - alert: VLLMHighErrorRate
+          expr: |
+            (
+              sum(vllm_requests_finished_per_second{finish_reason="abort"})
+              / (sum(vllm_requests_finished_per_second) > 0)
+            ) > 0.05
+          for: 5m
+          labels:
+            severity: critical
+            component: inference
+          annotations:
+            summary: "vLLM request error rate exceeds 5%"
+            description: "{{ $value | printf \"%.1f\" }}% of requests are being aborted. Check vLLM logs for OOM errors, timeouts, or model issues."

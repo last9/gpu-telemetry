@@ -1,0 +1,23 @@
+l9gpu
+Copyright (c) 2026 Last9, Inc.
+
+This product includes software developed by Meta Platforms, Inc. and
+affiliates as part of the GPU Cluster Monitoring (GCM) project
+(https://github.com/facebookresearch/gcm).
+
+Portions derived from facebookresearch/gcm are redistributed under their
+original licenses:
+
+  - l9gpu/         (MIT)        derived from gcm/
+  - shelper/       (MIT)        derived from shelper/
+  - slurmprocessor/ (Apache-2.0) derived from slurmprocessor/
+  - stubs/, Makefile, noxfile.py, pyoxidizer.bzl, docker/, debian/ (MIT)
+    derived from matching upstream paths
+
+Modifications by Last9, Inc. are noted in individual file headers.
+Files under k8shelper/, k8sprocessor/, dashboards/, alerts/, and
+Last9-authored files under l9gpu/ (e.g. vllm_monitor.py, sglang_monitor.py,
+cost_monitor.py, fleet_health.py, device_telemetry_amd.py,
+device_telemetry_gaudi.py, nccl_monitor.py, nim_monitor.py,
+tgi_monitor.py, triton_monitor.py, k8s_gpu_map.py, dcgm_monitor.py,
+prometheus.py, l9gpu/training/) are original work by Last9, Inc.

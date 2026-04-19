@@ -1,0 +1,73 @@
+name: Release l9gpu-collector
+
+on:
+  push:
+    tags:
+      - "collector-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: collector-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GO_VERSION: "1.24"
+  OCB_VERSION: "v0.126.0"
+
+jobs:
+  release:
+    name: Build + publish collector distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go module downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: go-mod-${{ runner.os }}-${{ hashFiles('deploy/collector/builder-config.yaml') }}
+          restore-keys: |
+            go-mod-${{ runner.os }}-
+
+      - name: Cache ocb binary
+        id: cache-ocb
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin/builder
+          key: ocb-${{ runner.os }}-${{ env.OCB_VERSION }}
+
+      - name: Install OpenTelemetry Collector Builder
+        if: steps.cache-ocb.outputs.cache-hit != 'true'
+        run: go install go.opentelemetry.io/collector/cmd/builder@${{ env.OCB_VERSION }}
+
+      - name: Build collector source tree
+        run: builder --config deploy/collector/builder-config.yaml --skip-compilation
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run goreleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,71 @@
+# GPU stress Job — drives raw GPU utilization on the gpu-multi node (4x T4).
+#
+# Deploys 3 parallel pods each claiming 1 GPU and running continuous
+# torch.matmul loops to drive SM_ACTIVE, DRAM_ACTIVE, and power metrics.
+# Leaves 1 GPU free for the running vLLM deployment.
+#
+# Apply:   kubectl apply -f scripts/gpu_stress_job.yaml
+# Remove:  kubectl delete -f scripts/gpu_stress_job.yaml
+#
+# Uses the vllm image (already cached on the node) so there's no extra pull.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gpu-stress
+  namespace: monitoring
+spec:
+  parallelism: 3
+  completions: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: gpu-stress
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        alpha.eksctl.io/nodegroup-name: gpu-multi
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: stress
+          image: vllm/vllm-openai:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - python3
+            - -c
+            - |
+              import torch, time, os
+              duration = int(os.environ.get("STRESS_DURATION", "120"))
+              size = int(os.environ.get("MATRIX_SIZE", "4096"))
+              device = "cuda" if torch.cuda.is_available() else "cpu"
+              gpu = torch.cuda.get_device_name(0) if device == "cuda" else "cpu"
+              print(f"[gpu-stress] device={device} gpu={gpu} size={size}x{size} duration={duration}s", flush=True)
+              a = torch.randn(size, size, device=device, dtype=torch.float16)
+              b = torch.randn(size, size, device=device, dtype=torch.float16)
+              t0 = time.time()
+              iters = 0
+              while time.time() - t0 < duration:
+                  torch.matmul(a, b)
+                  torch.cuda.synchronize()
+                  iters += 1
+                  if iters % 100 == 0:
+                      elapsed = time.time() - t0
+                      print(f"[gpu-stress] {elapsed:.0f}s / {duration}s  iters={iters}", flush=True)
+              print(f"[gpu-stress] done. total_iters={iters}", flush=True)
+          env:
+            - name: STRESS_DURATION
+              value: "900"
+            - name: MATRIX_SIZE
+              value: "4096"
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              nvidia.com/gpu: 1
+              cpu: 100m
+              memory: 256Mi

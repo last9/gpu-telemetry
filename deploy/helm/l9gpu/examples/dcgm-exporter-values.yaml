@@ -1,0 +1,98 @@
+# dcgm-exporter Helm values for EKS GPU nodes (T4 / multi-GPU)
+#
+# Deploys NVIDIA dcgm-exporter as a DaemonSet on GPU nodes with:
+#   - Profiling counters enabled (SM active, tensor core, DRAM bandwidth, etc.)
+#   - Metrics exposed on :9400/metrics for scraping by the OTel collector
+#   - Custom metrics CSV mounted from a ConfigMap
+#
+# Prerequisites:
+#   1. Add the NVIDIA Helm repo:
+#        helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
+#        helm repo update
+#
+#   2. Create the metrics ConfigMap:
+#        kubectl create configmap dcgm-exporter-metrics \
+#          --namespace monitoring \
+#          --from-file=dcgm-metrics.csv=deploy/helm/l9gpu/examples/dcgm-metrics.csv
+#
+#   3. Install dcgm-exporter:
+#        helm upgrade --install dcgm-exporter nvidia/dcgm-exporter \
+#          --namespace monitoring \
+#          --values deploy/helm/l9gpu/examples/dcgm-exporter-values.yaml
+#
+#   4. Deploy the OTel collector with dcgm scraping enabled:
+#        helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+#          --namespace monitoring \
+#          --values deploy/helm/l9gpu/examples/eks-otelcol-dcgm.yaml
+#
+# After install, verify metrics:
+#   kubectl port-forward -n monitoring svc/dcgm-exporter 9400:9400
+#   curl http://localhost:9400/metrics | grep DCGM_FI_PROF_SM_ACTIVE
+#
+# NOTE: Profiling counters require exclusive access to the DCGM profiling API.
+# Only one profiling client per GPU at a time — do NOT run nvprof/nsight alongside.
+
+image:
+  repository: nvcr.io/nvidia/k8s/dcgm-exporter
+  # Uses chart AppVersion tag by default (4.5.2-4.8.1-distroless); override here if needed
+  pullPolicy: IfNotPresent
+
+# Expose metrics for OTel prometheus receiver scraping (no Prometheus Operator in this setup)
+serviceMonitor:
+  enabled: false
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9400"
+  prometheus.io/path: "/metrics"
+
+# Load the custom metrics CSV that enables profiling counters
+arguments:
+  - -f
+  - /etc/dcgm-exporter/dcgm-metrics.csv
+  - --kubernetes-gpu-id-type
+  - uid
+
+# Volume from the dcgm-exporter-metrics ConfigMap
+extraConfigMapVolumes:
+  - name: dcgm-metrics-volume
+    configMap:
+      name: dcgm-exporter-metrics
+      items:
+        - key: dcgm-metrics.csv
+          path: dcgm-metrics.csv
+
+# Mount the CSV over the default counters path
+extraVolumeMounts:
+  - name: dcgm-metrics-volume
+    mountPath: /etc/dcgm-exporter/dcgm-metrics.csv
+    subPath: dcgm-metrics.csv
+    readOnly: true
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+    nvidia.com/gpu: 1    # required so the NVIDIA container runtime injects libnvidia-ml.so
+  requests:
+    cpu: 100m
+    memory: 256Mi
+    nvidia.com/gpu: 1
+
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+
+# Required for multi-GPU nodes: without this the NVIDIA device plugin only exposes
+# 1 GPU (the allocated one) to the container and DCGM enumerates GPU0 for every pod.
+extraEnv:
+  - name: NVIDIA_VISIBLE_DEVICES
+    value: all
+
+# Collect metrics every 30s (matches nvml_monitor interval)
+# dcgm-exporter uses --collectors flag; override via extraArgs if needed
+extraArgs: []
