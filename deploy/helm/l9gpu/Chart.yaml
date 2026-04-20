@@ -36,5 +36,9 @@ annotations:
     - name: Metrics reference
       url: https://github.com/last9/gpu-telemetry/blob/main/docs/METRICS.md
   artifacthub.io/changes: |
-    - kind: added
-      description: Initial chart release
+    - kind: changed
+      description: Bump OpenTelemetry Collector stack to v0.150
+    - kind: fixed
+      description: Collector builder and example config corrections
+    - kind: changed
+      description: Chart appVersion bumped to 0.2.0
