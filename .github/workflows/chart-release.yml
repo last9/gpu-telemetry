@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  HELM_VERSION: v3.14.0
+  HELM_VERSION: v3.15.4
 
 jobs:
   release:
@@ -53,8 +53,10 @@ jobs:
       - name: Push chart to GHCR (OCI)
         env:
           OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
         run: |
           owner_lc="${OWNER,,}"
+          repo_lc="${REPO,,}"
           # Reuse the .tgz chart-releaser already built; fall back if absent.
           pkg_dir=".cr-release-packages"
           [ -d "$pkg_dir" ] || {
@@ -62,6 +64,8 @@ jobs:
             mkdir -p "$pkg_dir"
             helm package deploy/helm/l9gpu --destination "$pkg_dir"
           }
+          # Push under repo-scoped namespace to avoid collisions with other
+          # charts under ghcr.io/<owner>/charts owned by a different repo.
           for pkg in "$pkg_dir"/*.tgz; do
-            helm push "$pkg" "oci://ghcr.io/${owner_lc}/charts"
+            helm push "$pkg" "oci://ghcr.io/${owner_lc}/${repo_lc}" || true
           done
