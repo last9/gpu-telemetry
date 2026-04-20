@@ -4,6 +4,54 @@ entries:
   - annotations:
       artifacthub.io/category: monitoring-logging
       artifacthub.io/changes: |
+        - kind: fixed
+          description: Publish chart to repo-scoped OCI namespace (ghcr.io/last9/gpu-telemetry)
+        - kind: changed
+          description: Bump OpenTelemetry Collector stack to v0.150
+        - kind: fixed
+          description: Collector builder and example config corrections
+        - kind: changed
+          description: Chart appVersion bumped to 0.2.0
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Architecture
+          url: https://github.com/last9/gpu-telemetry/blob/main/docs/ARCHITECTURE.md
+        - name: Metrics reference
+          url: https://github.com/last9/gpu-telemetry/blob/main/docs/METRICS.md
+    apiVersion: v2
+    appVersion: 0.2.0
+    created: "2026-04-20T14:52:41.182083059Z"
+    description: Vendor-agnostic GPU telemetry for AI/ML and HPC clusters.
+    digest: 60ec48b72f7f84b47528672c7ec5a741fc3b74a991117bc5b76db431ac096572
+    home: https://github.com/last9/gpu-telemetry
+    icon: https://last9.io/favicon.ico
+    keywords:
+    - gpu
+    - nvidia
+    - amd
+    - gaudi
+    - opentelemetry
+    - otel
+    - telemetry
+    - ml
+    - observability
+    - slurm
+    - dcgm
+    - nvml
+    maintainers:
+    - email: support@last9.io
+      name: Last9 Engineering
+      url: https://last9.io
+    name: l9gpu
+    sources:
+    - https://github.com/last9/gpu-telemetry
+    type: application
+    urls:
+    - https://github.com/last9/gpu-telemetry/releases/download/chart-v0.2.1/l9gpu-0.2.1.tgz
+    version: 0.2.1
+  - annotations:
+      artifacthub.io/category: monitoring-logging
+      artifacthub.io/changes: |
         - kind: changed
           description: Bump OpenTelemetry Collector stack to v0.150
         - kind: fixed
@@ -131,4 +179,4 @@ entries:
     urls:
     - https://last9.github.io/gpu-telemetry/l9gpu-0.1.0.tgz
     version: 0.1.0
-generated: "2026-04-20T05:39:29.131101565Z"
+generated: "2026-04-20T14:52:41.182098752Z"
