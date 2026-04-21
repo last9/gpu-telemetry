@@ -35,7 +35,7 @@ helm install l9gpu l9gpu/l9gpu -n monitoring --create-namespace \
   --set otlpSecretName=l9gpu-otlp
 
 # or OCI
-helm install l9gpu oci://ghcr.io/last9/charts/l9gpu --version 0.1.0 -n monitoring
+helm install l9gpu oci://ghcr.io/last9/gpu-telemetry/l9gpu --version 0.2.1 -n monitoring
 ```
 
 Create the OTLP secret first:
