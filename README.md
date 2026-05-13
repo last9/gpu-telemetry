@@ -130,8 +130,9 @@ multi-cluster fleet, per-pod workload, health/reliability (ECC, throttling,
 XID), DCGM profiling, inference engines (vLLM, SGLang, TGI, Triton, NIM),
 fleet efficiency / idle detection.
 
-Alert rules in [`alerts/prometheus/`](./alerts/prometheus/) (17 `PrometheusRule`
-CRDs) and [`alerts/grafana/`](./alerts/grafana/). Enable via Helm:
+Alert rules in [`alerts/prometheus/`](./alerts/prometheus/) — 17 pre-built
+alert rules across 3 `PrometheusRule` CRDs (fleet, GPU infrastructure, LLM
+inference) — and [`alerts/grafana/`](./alerts/grafana/). Enable via Helm:
 `helm upgrade --set alerts.enabled=true …`.
 
 ---
