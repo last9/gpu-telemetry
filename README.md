@@ -22,6 +22,10 @@ It works on NVIDIA, AMD, and Intel Gaudi today. It will keep working on
 whatever comes next because it emits OpenTelemetry, not a bespoke format.
 There's no vendor backend in the agent itself. That's deliberate.
 
+<p align="center">
+  <img src="./docs/diagrams/l9gpu_observability_overview.jpg" alt="What L9 GPU Telemetry Observes — workload-aware, vendor-agnostic GPU observability" width="820"/>
+</p>
+
 ---
 
 ## Quick Start — Kubernetes
