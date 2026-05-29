@@ -52,7 +52,7 @@ dev = [
   "pre-commit",
   "pytest",
   "pytest-mock",
-  "mypy==1.7.0",
+  "mypy==1.20.1",
   "requests-mock",
   "pytest-subprocess",
   "types-requests",
