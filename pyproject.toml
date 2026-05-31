@@ -15,7 +15,7 @@ dependencies = [
   "click==8.0.4",
   "typeguard==2.13.3",
   "click-option-group",
-  "pydantic==2.12.5",
+  "pydantic==2.13.4",
   "omegaconf~=2.2",
   "tomli~=2.0",
   "certifi>=2024.02.02",
