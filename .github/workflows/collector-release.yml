@@ -67,9 +67,25 @@ jobs:
         id: semver
         env:
           REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
         run: |
-          semver="${REF_NAME#collector-}"
+          if [ "$REF_TYPE" = "tag" ]; then
+            tag="$REF_NAME"
+          else
+            # workflow_dispatch / branch run: fall back to the latest collector-v* tag
+            tag="$(git describe --tags --abbrev=0 --match 'collector-v*')"
+          fi
+          if [ -z "$tag" ]; then
+            echo "::error::no collector-v* tag found to release from" >&2
+            exit 1
+          fi
+          # goreleaser (OSS) parses .Version from GORELEASER_CURRENT_TAG, so it
+          # must be a bare semver (v0.2.0) with the "collector-" prefix stripped.
+          # The GitHub release is published separately at the full tag below.
+          semver="${tag#collector-}"
+          echo "Releasing ${semver} (from ${tag})"
           echo "tag=${semver}" >> "$GITHUB_OUTPUT"
+          echo "full_tag=${tag}" >> "$GITHUB_OUTPUT"
 
       - name: Run goreleaser
         uses: goreleaser/goreleaser-action@v6
@@ -80,3 +96,24 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ steps.semver.outputs.tag }}
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FULL_TAG: ${{ steps.semver.outputs.full_tag }}
+          SEMVER: ${{ steps.semver.outputs.tag }}
+        run: |
+          # goreleaser left the archives + checksums in dist/ (release.disable).
+          # Publish them at the namespaced collector-vX.Y.Z tag, idempotently so
+          # re-runs of the same tag re-upload instead of failing.
+          prerelease_flag=""
+          case "$SEMVER" in *-*) prerelease_flag="--prerelease" ;; esac
+          if gh release view "$FULL_TAG" >/dev/null 2>&1; then
+            gh release upload "$FULL_TAG" dist/*.tar.gz dist/checksums.txt --clobber
+          else
+            gh release create "$FULL_TAG" \
+              --title "l9gpu-collector ${SEMVER#v}" \
+              --generate-notes \
+              $prerelease_flag \
+              dist/*.tar.gz dist/checksums.txt
+          fi

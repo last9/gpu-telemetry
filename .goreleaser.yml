@@ -75,13 +75,13 @@ docker_manifests:
 checksum:
   name_template: "checksums.txt"
 
+# goreleaser only builds the binaries/archives and pushes the docker image.
+# The GitHub release is published by the workflow via `gh release create` at
+# the full "collector-vX.Y.Z" tag. We can't let goreleaser publish it because
+# goreleaser (OSS) derives the release tag from the parsed semver (v0.2.0),
+# which is also owned by the Python release — they would collide.
 release:
-  github:
-    owner: last9
-    name: gpu-telemetry
-  prerelease: auto
-  draft: false
-  name_template: "l9gpu-collector {{ .Version }}"
+  disable: "true"
 
 changelog:
   sort: asc
