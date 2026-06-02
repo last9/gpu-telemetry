@@ -27,11 +27,12 @@ docker run --rm \
 Use `:latest` for tracking the newest release, or pin to a version:
 
 ```bash
-docker pull ghcr.io/last9/l9gpu-collector:collector-v0.1.0
+docker pull ghcr.io/last9/l9gpu-collector:v0.1.0
 ```
 
-Multi-arch (linux/amd64, linux/arm64). Docker picks the right image
-automatically.
+The docker image is published for `linux/amd64` only. For `linux/arm64`,
+use the binary tarball below (a native arm64 image will be added once an
+arm64 build runner is available).
 
 ### Kubernetes
 
