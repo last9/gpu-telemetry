@@ -32,7 +32,7 @@ license = { text = "MIT" }
 
 [project.urls]
 Homepage = "https://last9.io"
-Documentation = "https://docs.last9.io"
+Documentation = "https://last9.io/docs/"
 Source = "https://github.com/last9/gpu-telemetry"
 Issues = "https://github.com/last9/gpu-telemetry/issues"
 
