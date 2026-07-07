@@ -31,7 +31,10 @@ dynamic = ["version"]
 license = { text = "MIT" }
 
 [project.urls]
-Homepage = "https://github.com/last9/gpu-telemetry"
+Homepage = "https://last9.io"
+Documentation = "https://last9.io/docs/"
+Source = "https://github.com/last9/gpu-telemetry"
+Issues = "https://github.com/last9/gpu-telemetry/issues"
 
 [project.optional-dependencies]
 amd = ["amdsmi"]

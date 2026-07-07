@@ -7,6 +7,8 @@
 [![PyPI](https://img.shields.io/pypi/v/l9gpu)](https://pypi.org/project/l9gpu/)
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/l9gpu)](https://artifacthub.io/packages/search?repo=l9gpu)
 
+Built by [Last9](https://last9.io) — send GPU telemetry to Last9 or any OTLP backend. See the [Last9 docs](https://last9.io/docs/).
+
 DCGM exporter tells you a GPU is hot. It won't tell you whose job is frying it.
 
 Most GPU observability stops at the hardware — utilization, temperature, ECC —
