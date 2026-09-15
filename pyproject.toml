@@ -9,7 +9,7 @@ description = "Last9 GPU Telemetry: Vendor-Agnostic GPU Monitoring for AI Cluste
 requires-python = ">=3.10"
 dependencies = [
   # TODO: Unpin the requests version
-  "requests==2.33.0",
+  "requests==2.34.2",
   "pynvml==11.4.*",
   "typing_extensions",
   "click==8.0.4",
