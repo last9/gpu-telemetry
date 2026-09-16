@@ -11,9 +11,9 @@ annotated-types==0.7.0 \
 antlr4-python3-runtime==4.9.3 \
     --hash=sha256:f224469b4168294902bb1efa80a8bf7855f24c99aef99cbefc1bcd3cce77881b
     # via omegaconf
-argcomplete==3.6.2 \
-    --hash=sha256:65b3133a29ad53fb42c48cf5114752c7ab66c1c38544fdf6460f450c09b42591 \
-    --hash=sha256:d0519b1bc867f5f4f4713c41ad0aba73a4a5f007449716b16f385f2166dc6adf
+argcomplete==3.7.0 \
+    --hash=sha256:afde224f753f874807b1dc1414e883ab8fe0cda9c04807b6047dcb8e1ac23913 \
+    --hash=sha256:d8f0f22d2a8a7caa383be1e22b6caf1ecaf0ebd10d8f83cc125e36540c95830c
     # via nox
 attrs==25.3.0 \
     --hash=sha256:427318ce031701fea540783410126f03899a97ffc6f61596ad581ac2e40e3bc3 \
