@@ -2,14 +2,14 @@
 # Copyright (c) Last9, Inc.
 import subprocess
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Protocol
+from typing import Dict, List, Optional, Protocol, Union
 
 
 class ShellCommandOut(Protocol):
-    args: List[str]
+    args: Union[str, List[str]]
     returncode: int
     stdout: str
-    stderr: str
+    stderr: Optional[str]
 
     def check_returncode(self) -> None: ...
 
@@ -23,7 +23,7 @@ class PipedShellCommandOut:
 def handle_subprocess_exception(exc: Exception) -> ShellCommandOut:
     if isinstance(exc, subprocess.TimeoutExpired):
         return subprocess.CompletedProcess(
-            args=[exc.cmd],
+            args=exc.cmd,
             returncode=128,
             stdout="Error command timeout because of timeout setting.\n",
         )
