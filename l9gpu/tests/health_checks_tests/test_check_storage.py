@@ -15,9 +15,11 @@ from l9gpu.health_checks.types import ExitCode
 from l9gpu.tests.fakes import FakeShellCommandOut
 
 
-@dataclass
-class FakeCheckDiskStorageImpl:
-    disk_usage: ShellCommandOut
+class FakeStorageCheck:
+    """Implement the full storage protocol without running host commands.
+
+    Each test overrides the operations it exercises; unexpected calls fail.
+    """
 
     cluster = "test cluster"
     type = "prolog"
@@ -27,30 +29,38 @@ class FakeCheckDiskStorageImpl:
     def get_disk_usage(
         self, timeout_secs: int, volume: str, logger: logging.Logger
     ) -> ShellCommandOut:
-        return self.disk_usage
+        raise NotImplementedError
 
     def get_mount_status(
         self, timeout_secs: int, dir: str, logger: logging.Logger
     ) -> PipedShellCommandOut:
-        return PipedShellCommandOut([0, 0], "dummy output")
+        raise NotImplementedError
 
     def check_file_exists(self, f: str, logger: logging.Logger) -> bool:
-        return True
+        raise NotImplementedError
 
     def check_directory_exists(self, dir: str, logger: logging.Logger) -> bool:
-        return True
+        raise NotImplementedError
 
     def get_fstab_mount_info(
         self, timeout_secs: int, mountpoint: str, logger: logging.Logger
     ) -> Tuple[ShellCommandOut, ShellCommandOut]:
-        return FakeShellCommandOut([""], 0, "dummy output"), FakeShellCommandOut(
-            [""], 0, "dummy output"
-        )
+        raise NotImplementedError
 
     def get_disk_size(
         self, timeout_secs: int, volume: str, units: str, logger: logging.Logger
     ) -> PipedShellCommandOut:
-        return PipedShellCommandOut([0], "")
+        raise NotImplementedError
+
+
+@dataclass
+class FakeCheckDiskStorageImpl(FakeStorageCheck):
+    disk_usage: ShellCommandOut
+
+    def get_disk_usage(
+        self, timeout_secs: int, volume: str, logger: logging.Logger
+    ) -> ShellCommandOut:
+        return self.disk_usage
 
 
 @pytest.fixture
@@ -212,29 +222,13 @@ def test_inode_usage(
 
 
 @dataclass
-class FakeCheckMountImpl:
+class FakeCheckMountImpl(FakeStorageCheck):
     mount_status: PipedShellCommandOut
-
-    cluster = "test cluster"
-    type = "prolog"
-    log_level = "INFO"
-    log_folder = "/tmp"
-
-    def get_disk_usage(
-        self, timeout_secs: int, volume: str, logger: logging.Logger
-    ) -> ShellCommandOut:
-        return FakeShellCommandOut([""], 0, "dummy output")
 
     def get_mount_status(
         self, timeout_secs: int, dir: str, logger: logging.Logger
     ) -> PipedShellCommandOut:
         return self.mount_status
-
-    def check_file_exists(self, f: str, logger: logging.Logger) -> bool:
-        return True
-
-    def check_directory_exists(self, dir: str, logger: logging.Logger) -> bool:
-        return True
 
 
 @pytest.fixture
@@ -297,36 +291,14 @@ def test_mounted_directory(
 
 
 @dataclass
-class FakeCheckExistanceImpl:
+class FakeCheckExistanceImpl(FakeStorageCheck):
     existance: bool
-
-    cluster = "test cluster"
-    type = "prolog"
-    log_level = "INFO"
-    log_folder = "/tmp"
-
-    def get_disk_usage(
-        self, timeout_secs: int, volume: str, logger: logging.Logger
-    ) -> ShellCommandOut:
-        return FakeShellCommandOut([""], 0, "dummy output")
-
-    def get_mount_status(
-        self, timeout_secs: int, dir: str, logger: logging.Logger
-    ) -> PipedShellCommandOut:
-        return PipedShellCommandOut([0, 0], "dummy output")
 
     def check_file_exists(self, f: str, logger: logging.Logger) -> bool:
         return self.existance
 
     def check_directory_exists(self, dir: str, logger: logging.Logger) -> bool:
         return self.existance
-
-    def get_fstab_mount_info(
-        self, timeout_secs: int, mountpoint: str, logger: logging.Logger
-    ) -> Tuple[ShellCommandOut, ShellCommandOut]:
-        return FakeShellCommandOut([""], 0, "dummy output"), FakeShellCommandOut(
-            [""], 0, "dummy output"
-        )
 
 
 @pytest.fixture
@@ -453,11 +425,7 @@ def test_dir_existance(
 
 
 @dataclass
-class FakeExceptionImpl:
-    cluster = "test cluster"
-    type = "prolog"
-    log_level = "INFO"
-    log_folder = "/tmp"
+class FakeExceptionImpl(FakeStorageCheck):
 
     def get_disk_usage(
         self, timeout_secs: int, volume: str, logger: logging.Logger
@@ -474,13 +442,6 @@ class FakeExceptionImpl:
 
     def check_directory_exists(self, dir: str, logger: logging.Logger) -> bool:
         raise ValueError("Some error")
-
-    def get_fstab_mount_info(
-        self, timeout_secs: int, mountpoint: str, logger: logging.Logger
-    ) -> Tuple[ShellCommandOut, ShellCommandOut]:
-        return FakeShellCommandOut([""], 0, "dummy output"), FakeShellCommandOut(
-            [""], 0, "dummy output"
-        )
 
 
 def test_file_dir_exception(
@@ -517,29 +478,8 @@ def test_file_dir_exception(
 
 
 @dataclass
-class FakeCheckMountpointImpl:
+class FakeCheckMountpointImpl(FakeStorageCheck):
     mountpoint: Tuple[ShellCommandOut, ShellCommandOut]
-
-    cluster = "test cluster"
-    type = "prolog"
-    log_level = "INFO"
-    log_folder = "/tmp"
-
-    def get_disk_usage(
-        self, timeout_secs: int, volume: str, logger: logging.Logger
-    ) -> ShellCommandOut:
-        return FakeShellCommandOut([""], 0, "dummy output")
-
-    def get_mount_status(
-        self, timeout_secs: int, dir: str, logger: logging.Logger
-    ) -> PipedShellCommandOut:
-        return PipedShellCommandOut([0, 0], "dummy output")
-
-    def check_file_exists(self, f: str, logger: logging.Logger) -> bool:
-        return True
-
-    def check_directory_exists(self, dir: str, logger: logging.Logger) -> bool:
-        return True
 
     def get_fstab_mount_info(
         self, timeout_secs: int, mountpoint: str, logger: logging.Logger
@@ -630,7 +570,7 @@ def test_check_mountpoint(
 
 
 @dataclass
-class FakeDiskSizeImpl:
+class FakeDiskSizeImpl(FakeStorageCheck):
     def get_disk_size(
         self, timeout_secs: int, volume: str, units: str, logger: logging.Logger
     ) -> PipedShellCommandOut:

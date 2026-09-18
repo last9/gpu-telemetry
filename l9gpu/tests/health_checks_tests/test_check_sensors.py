@@ -28,8 +28,8 @@ class FakeSensorsCheckImpl:
 
     def get_sensors(
         self,
-        _timeout_secs: int,
-        _logger: logging.Logger,
+        timeout_secs: int,
+        logger: logging.Logger,
     ) -> ShellCommandOut:
         """Return pregenerated output instead of calling ipmi-sensors."""
         return self.sensors_out

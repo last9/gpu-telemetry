@@ -46,7 +46,7 @@ class FakeSshCertsCheckImpl:
     log_level: str = "INFO"
     log_folder: str = "/tmp"
 
-    def get_ipa_certs(self, _host: str, timeout_secs: int) -> ShellCommandOut:
+    def get_ipa_certs(self, host: str, timeout_secs: int) -> ShellCommandOut:
         """
         Return first param instead of invoking ipa host-show.
 
@@ -62,7 +62,7 @@ class FakeSshCertsCheckImpl:
             )
         return self.params[0]
 
-    def get_ssh_certs(self, _host: str, timeout_secs: int) -> ShellCommandOut:
+    def get_ssh_certs(self, host: str, timeout_secs: int) -> ShellCommandOut:
         """
         Return second param instead of invoking ssh-keyscan and ssh-keygen.
 
