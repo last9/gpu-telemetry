@@ -1,5 +1,6 @@
 # Copyright (c) Last9, Inc.
 import shlex
+import signal
 import subprocess
 import sys
 
@@ -24,7 +25,13 @@ def test_shell_command_result_matches_protocol(returncode: int) -> None:
         ]
     )
 
-    result = shell_command(cmd, timeout_secs=10)
+    # The sacct_backfill CLI installs a child-reaping handler at import time.
+    # Let subprocess collect its own exit status, regardless of test order.
+    previous_handler = signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+    try:
+        result = shell_command(cmd, timeout_secs=10)
+    finally:
+        signal.signal(signal.SIGCHLD, previous_handler)
 
     check_type(result, ShellCommandOut)
     assert result.args == cmd
