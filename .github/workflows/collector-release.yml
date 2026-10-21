@@ -110,6 +110,7 @@ jobs:
           case "$SEMVER" in *-*) prerelease_flag="--prerelease" ;; esac
           if gh release view "$FULL_TAG" >/dev/null 2>&1; then
             gh release upload "$FULL_TAG" dist/*.tar.gz dist/checksums.txt --clobber
+            gh release edit "$FULL_TAG" --draft=false
           else
             gh release create "$FULL_TAG" \
               --title "l9gpu-collector ${SEMVER#v}" \
