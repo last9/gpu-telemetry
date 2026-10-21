@@ -7,7 +7,7 @@ dist:
   name: l9gpu-collector
   description: OpenTelemetry Collector distribution with l9gpu processors bundled
   output_path: ./_build
-  version: 0.1.0
+  version: 0.2.1
 
 extensions:
   - gomod: go.opentelemetry.io/collector/extension/zpagesextension v0.150.0
