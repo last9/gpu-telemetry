@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GO_VERSION: "1.25"
+  GO_VERSION: "1.27.3"
   OCB_VERSION: "v0.150.0"
 
 jobs:
@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/go/bin/builder
-          key: ocb-${{ runner.os }}-${{ env.OCB_VERSION }}
+          key: ocb-${{ runner.os }}-${{ env.GO_VERSION }}-${{ env.OCB_VERSION }}
 
       - name: Install OpenTelemetry Collector Builder
         if: steps.cache-ocb.outputs.cache-hit != 'true'

@@ -1,6 +1,6 @@
 module github.com/last9/gpu-telemetry/slurmprocessor
 
-go 1.25.0
+go 1.27.3
 
 require (
 	github.com/last9/gpu-telemetry/shelper v0.2.0
