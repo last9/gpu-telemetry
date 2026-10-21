@@ -18,7 +18,7 @@ dependencies = [
   "pydantic==2.13.4",
   "omegaconf~=2.2",
   "tomli~=2.0",
-  "certifi>=2024.02.02",
+  "certifi>=2026.10.19",
   "opentelemetry-api",
   "opentelemetry-sdk",
   "opentelemetry-exporter-otlp",

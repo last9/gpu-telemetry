@@ -1,6 +1,6 @@
 module github.com/last9/gpu-telemetry/k8sprocessor
 
-go 1.25.0
+go 1.27.3
 
 require (
 	github.com/last9/gpu-telemetry/k8shelper v0.2.0
