@@ -73,3 +73,13 @@ docker run --rm --entrypoint python \
 
 Publish rebuilt packages and images through the normal release workflows.
 Do not disable certificate verification to restore connectivity.
+
+## Python HTTPS dependency minimum
+
+Starting with l9gpu 0.2.3, runtime installations require `urllib3>=2.8.0,<3`.
+This also upgrades an already-installed older urllib3 when l9gpu is upgraded;
+the development lockfile alone does not constrain users' runtime environments.
+See the [urllib3 2.8.0 security fixes](https://github.com/urllib3/urllib3/releases/tag/2.8.0)
+for HTTPS proxy TLS configuration, chunked-response memory use, and streaming
+decompression fixes. Installations using HTTPS forwarding proxies should
+review the upstream proxy TLS configuration guidance when upgrading.

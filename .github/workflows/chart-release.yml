@@ -67,5 +67,5 @@ jobs:
           # Push under repo-scoped namespace to avoid collisions with other
           # charts under ghcr.io/<owner>/charts owned by a different repo.
           for pkg in "$pkg_dir"/*.tgz; do
-            helm push "$pkg" "oci://ghcr.io/${owner_lc}/${repo_lc}" || true
+            helm push "$pkg" "oci://ghcr.io/${owner_lc}/${repo_lc}"
           done
