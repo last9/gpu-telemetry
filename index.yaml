@@ -5,6 +5,50 @@ entries:
       artifacthub.io/category: monitoring-logging
       artifacthub.io/changes: |
         - kind: fixed
+          description: Default deployments use the patched l9gpu 0.2.3 image
+        - kind: changed
+          description: Require urllib3 2.8.0 or newer for Python HTTPS security fixes
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Architecture
+          url: https://github.com/last9/gpu-telemetry/blob/main/docs/ARCHITECTURE.md
+        - name: Metrics reference
+          url: https://github.com/last9/gpu-telemetry/blob/main/docs/METRICS.md
+    apiVersion: v2
+    appVersion: 0.2.3
+    created: "2026-10-26T09:04:35.156200782Z"
+    description: Vendor-agnostic GPU telemetry for AI/ML and HPC clusters.
+    digest: c0351e8b92799d86c46726e1c5ffc2ba708f50b2cdb62380abac1f653701ee2f
+    home: https://github.com/last9/gpu-telemetry
+    icon: https://last9.io/favicon.ico
+    keywords:
+    - gpu
+    - nvidia
+    - amd
+    - gaudi
+    - opentelemetry
+    - otel
+    - telemetry
+    - ml
+    - observability
+    - slurm
+    - dcgm
+    - nvml
+    maintainers:
+    - email: support@last9.io
+      name: Last9 Engineering
+      url: https://last9.io
+    name: l9gpu
+    sources:
+    - https://github.com/last9/gpu-telemetry
+    type: application
+    urls:
+    - https://github.com/last9/gpu-telemetry/releases/download/chart-v0.2.2/l9gpu-0.2.2.tgz
+    version: 0.2.2
+  - annotations:
+      artifacthub.io/category: monitoring-logging
+      artifacthub.io/changes: |
+        - kind: fixed
           description: Publish chart to repo-scoped OCI namespace (ghcr.io/last9/gpu-telemetry)
         - kind: changed
           description: Bump OpenTelemetry Collector stack to v0.150
@@ -179,4 +223,4 @@ entries:
     urls:
     - https://last9.github.io/gpu-telemetry/l9gpu-0.1.0.tgz
     version: 0.1.0
-generated: "2026-04-20T14:52:41.182098752Z"
+generated: "2026-10-26T09:04:35.156223516Z"
